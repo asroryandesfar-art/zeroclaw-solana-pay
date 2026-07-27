@@ -1,5 +1,9 @@
 # ZeroClaw Solana Payment Assistant
 
+[![CI](https://github.com/asroryandesfar-art/zeroclaw-solana-pay/actions/workflows/ci.yml/badge.svg)](https://github.com/asroryandesfar-art/zeroclaw-solana-pay/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](rust-toolchain.toml)
+
 **Turn WhatsApp into a Solana payment terminal — non-custodial.**
 
 A shop messages the agent *"Charge Table 4 for 25 USDC."* Seconds later it gets back
