@@ -1,0 +1,70 @@
+# SOP: charge — turn a staff WhatsApp message into a QR invoice.
+#
+# [verify] This expresses the orchestration in the ZeroClaw SOP engine's model
+# (trigger + execution mode + ordered steps). Adapt field names to your
+# ZeroClaw version's SOP schema; the control flow and guarantees are the intent.
+
+name: charge
+description: Create an invoice and send its QR in response to a charge request.
+
+# Triggered by an inbound WhatsApp message (via the gateway/channel) that passes
+# the deny-by-default allowed_users gate.
+trigger:
+  source: webhook          # inbound WhatsApp message
+  channel: whatsapp
+
+# Deterministic: the money path runs with NO LLM round-trips. The only LLM use
+# is the single intent-extraction step below.
+mode: deterministic
+
+steps:
+  - id: extract_intent
+    description: LLM parses the message into a strict intent JSON (amount, token, message).
+    llm:
+      prompt: prompts/nlu_extract.md
+      temperature: 0.0
+    # If the output fails the schema/bounds, reply politely and STOP (no invoice).
+    on_invalid: { reply: "Maaf, formatnya belum jelas. Contoh: \"Charge Table 4 25 USDC\".", halt: true }
+
+  - id: dedup
+    description: If an identical PENDING invoice from this sender exists in the last 60s, reuse it.
+    memory:
+      query: { namespace: invoices, status: PENDING, sender: "{{sender}}", within_seconds: 60 }
+    on_found: { goto: send_qr }   # reuse existing reference/url; do not create a duplicate
+
+  - id: create_invoice
+    description: Build the reference + Solana Pay URL.
+    skill: create_invoice
+    args: { amount: "{{intent.amount}}", token: "{{intent.token}}", message: "{{intent.message}}" }
+    on_exit:
+      2: { reply: "Nominal/token tidak valid: {{stderr}}", halt: true }   # invalid input
+      3: { alert_staff: "Config error: {{stderr}}", halt: true }          # operator issue
+
+  - id: persist
+    description: Commit the invoice to the ledger as PENDING (the commit point).
+    memory:
+      write:
+        namespace: invoices
+        status: PENDING
+        record:
+          reference: "{{create_invoice.reference}}"
+          url: "{{create_invoice.url}}"
+          amount_base_units: "{{create_invoice.amount_base_units}}"
+          token: "{{create_invoice.token}}"
+          mint: "{{create_invoice.mint}}"
+          sender: "{{sender}}"
+          created_at: "{{now}}"
+          expires_at: "{{now + env.INVOICE_TTL_SECONDS}}"
+          attempts: 0
+
+  - id: send_qr
+    description: Render the QR PNG.
+    skill: send_qr
+    args: { url: "{{create_invoice.url}}", out: "agent/data/tmp/{{create_invoice.reference}}.png" }
+
+  - id: reply
+    description: Send the QR + a short caption to the customer.
+    channel:
+      send_image:
+        path: "{{send_qr.image_path}}"
+        caption: "Invoice untuk {{intent.amount}} {{intent.token}} — scan untuk bayar. Berlaku {{env.INVOICE_TTL_SECONDS}} detik."
