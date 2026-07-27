@@ -7,23 +7,20 @@
 //! The derived address is what `verify` checks the payment landed in.
 
 use solana_pubkey::Pubkey;
-use std::str::FromStr;
 
-/// SPL Associated Token Account program.
-const ATA_PROGRAM_ID: &str = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+/// SPL Associated Token Account program. Parsed at compile time — an invalid
+/// literal would fail the build, so there is no runtime panic path.
+const ATA_PROGRAM_ID: Pubkey =
+    Pubkey::from_str_const("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 /// SPL Token program.
-const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const TOKEN_PROGRAM_ID: Pubkey =
+    Pubkey::from_str_const("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
 /// Derive the associated token account for `owner` holding `mint`.
 pub fn associated_token_address(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
-    // These literals are compile-time constants of the SPL programs; parsing
-    // them cannot fail. `expect` documents that invariant.
-    let ata_program = Pubkey::from_str(ATA_PROGRAM_ID).expect("valid ATA program id");
-    let token_program = Pubkey::from_str(TOKEN_PROGRAM_ID).expect("valid token program id");
-
     let (ata, _bump) = Pubkey::find_program_address(
-        &[owner.as_ref(), token_program.as_ref(), mint.as_ref()],
-        &ata_program,
+        &[owner.as_ref(), TOKEN_PROGRAM_ID.as_ref(), mint.as_ref()],
+        &ATA_PROGRAM_ID,
     );
     ata
 }
@@ -35,7 +32,7 @@ mod tests {
     const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
     fn pk(s: &str) -> Pubkey {
-        Pubkey::from_str(s).unwrap()
+        std::str::FromStr::from_str(s).unwrap()
     }
 
     #[test]

@@ -61,23 +61,25 @@ The LLM only reads language. Every decision about money is deterministic code.
 
 ```bash
 git clone <repo> && cd zeroclaw-solana-pay
-cp .env.example .env          # set MERCHANT_WALLET (a devnet public key)
+cp .env.example .env          # then edit .env and set MERCHANT_WALLET (a devnet public key)
 make test                     # 107 tests, offline & deterministic
 make install                  # puts `solpay` on your PATH
 
-# Create an invoice
-MERCHANT_WALLET=$MERCHANT SOLANA_CLUSTER=devnet \
-  solpay create-url --amount 25 --token USDC --message "Table 4"
+# Load your config into the shell (MERCHANT_WALLET, SOLANA_CLUSTER, RPC…)
+set -a; source .env; set +a
 
-# Render its QR
+# Create an invoice → note the "url" and "reference" in the JSON output
+solpay create-url --amount 25 --token USDC --message "Table 4"
+
+# Render its QR (paste the "url" from above)
 solpay render-qr --url 'solana:...' --out /tmp/qr.png
 
-# Verify payment (returns paid | pending | mismatch)
-solpay verify --reference <ref> --amount-base-units 25000000 \
-  --rpc https://api.devnet.solana.com
+# Verify payment (returns paid | pending | mismatch); paste the "reference"
+solpay verify --reference <ref> --amount-base-units 25000000
 ```
 
-Full walkthrough (including WhatsApp + the ZeroClaw agent) is in
+Or just run **`scripts/demo.sh`**, which does create → QR → verify against devnet
+for you. Full walkthrough (including WhatsApp + the ZeroClaw agent) is in
 [`docs/SETUP.md`](docs/SETUP.md).
 
 ---
