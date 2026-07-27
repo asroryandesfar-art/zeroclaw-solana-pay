@@ -4,6 +4,26 @@ Goal: prove this is a **real, running** use case — a WhatsApp message becomes 
 real on-chain USDC payment — while landing the non-custodial pitch. Hard cut at
 3:00. Narration in English (captions on); record on **devnet**.
 
+## ⚠️ Devnet vs Mainnet — the wallet's network (critical)
+
+A Solana Pay transfer-request URL has **no cluster field** (see the
+[spec](https://docs.solanapay.com/spec)): the parameters are only
+`amount`, `spl-token`, `reference`, `label`, `message`, `memo`. **The QR cannot
+force devnet — the wallet chooses the network, and Phantom defaults to
+mainnet-beta.** So if Phantom shows a *mainnet* payment, it is because Phantom is
+set to mainnet, not because of anything in the URL.
+
+Before scanning, the payer must switch Phantom to devnet:
+
+> Phantom → **Settings → Developer Settings → Testnet Mode = ON**, then select
+> **Solana Devnet**. The network badge should read **Devnet**.
+
+Safety: this demo's token mint (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`)
+is a token **only on devnet** — on mainnet that address is not a token at all —
+and the mainnet USDC mint is never placed in a devnet URL (it requires the
+`ALLOW_MAINNET=true` interlock). A real mainnet USDC payment from this QR is
+therefore impossible.
+
 ## Pre-flight checklist (do NOT skip)
 
 ```

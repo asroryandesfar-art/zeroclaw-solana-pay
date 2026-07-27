@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# End-to-end devnet demo of the solpay engine, no ZeroClaw required:
+# End-to-end DEVNET demo of the solpay engine, no ZeroClaw required:
 #   create invoice -> render QR -> verify (pending until paid).
+#
+# IMPORTANT: A Solana Pay URL has no cluster field (per the spec), so the QR
+# cannot force the network — the wallet decides. Phantom defaults to MAINNET.
+# The payer must switch Phantom to Devnet first (see the banner below).
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 load_env
@@ -11,20 +15,40 @@ SOLPAY="$(solpay_bin)"
 : "${SOLANA_CLUSTER:=devnet}"
 : "${SOLANA_RPC_PRIMARY:=https://api.devnet.solana.com}"
 : "${MERCHANT_WALLET:?set MERCHANT_WALLET (a devnet public key) in .env or the environment}"
+: "${STORE_LABEL:=ZeroClaw Coffee}"
 AMOUNT="${1:-25}"
 
+if [[ "$SOLANA_CLUSTER" != "devnet" ]]; then
+  echo "WARNING: SOLANA_CLUSTER=$SOLANA_CLUSTER (not devnet). This demo is meant for devnet." >&2
+fi
+
 echo "==> 1) create-url  (amount=$AMOUNT USDC, cluster=$SOLANA_CLUSTER)"
-INVOICE_JSON="$("$SOLPAY" create-url --amount "$AMOUNT" --token USDC --message "Demo table")"
+INVOICE_JSON="$("$SOLPAY" create-url --amount "$AMOUNT" --token USDC \
+  --label "$STORE_LABEL (Devnet)" --message "Demo table")"
 echo "$INVOICE_JSON"
 
 REFERENCE="$(printf '%s' "$INVOICE_JSON" | grep -o '"reference":"[^"]*"' | cut -d'"' -f4)"
 URL="$(printf '%s' "$INVOICE_JSON" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)"
+MINT="$(printf '%s' "$INVOICE_JSON" | grep -o '"mint":"[^"]*"' | cut -d'"' -f4)"
 AMOUNT_BASE="$(printf '%s' "$INVOICE_JSON" | grep -o '"amount_base_units":[0-9]*' | cut -d: -f2)"
 
 echo
 echo "==> 2) render-qr  -> /tmp/solpay-demo.png"
 "$SOLPAY" render-qr --url "$URL" --out /tmp/solpay-demo.png
-echo "  open /tmp/solpay-demo.png and pay it from a devnet wallet holding devnet USDC"
+echo
+echo "  +----------------------------------------------------------------------+"
+echo "  |  DEVNET DEMO  --  set your wallet to Devnet BEFORE scanning           |"
+echo "  |  A Solana Pay QR has no cluster field; the wallet picks the network.  |"
+echo "  |  Phantom defaults to MAINNET, so switch it first:                     |"
+echo "  |    Phantom -> Settings -> Developer Settings -> Testnet Mode = ON     |"
+echo "  |    then select 'Solana Devnet'.                                       |"
+echo "  |  The token in this QR exists ONLY on devnet, so a real mainnet USDC   |"
+echo "  |  payment is impossible from this QR.                                  |"
+echo "  +----------------------------------------------------------------------+"
+echo "  QR image:      /tmp/solpay-demo.png"
+echo "  Token mint:    $MINT   (devnet-only)"
+echo "  Watch on the DEVNET explorer:"
+echo "    https://explorer.solana.com/address/$REFERENCE?cluster=devnet"
 
 echo
 echo "==> 3) verify  (reference=$REFERENCE)"
@@ -33,5 +57,5 @@ echo "==> 3) verify  (reference=$REFERENCE)"
   --rpc "$SOLANA_RPC_PRIMARY"
 
 echo
-echo "Re-run this verify after paying to see PAID:"
+echo "After paying on DEVNET, re-run to see PAID:"
 echo "  $SOLPAY verify --reference $REFERENCE --amount-base-units $AMOUNT_BASE --rpc $SOLANA_RPC_PRIMARY"
