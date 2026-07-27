@@ -1,0 +1,35 @@
+[package]
+name = "solpay"
+description = "Deterministic Solana Pay helper: build transfer-request URLs, render QR, and verify on-chain USDC payments. Stateless, non-custodial (never signs, never holds keys)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+# Split library (testable logic) from the thin CLI binary.
+[lib]
+name = "solpay"
+path = "src/lib.rs"
+
+[[bin]]
+name = "solpay"
+path = "src/main.rs"
+
+[dependencies]
+bs58 = "0.5"
+clap = { version = "4.6.4", features = ["derive"] }
+getrandom = "0.2"
+image = { version = "0.25", default-features = false, features = ["png"] }
+percent-encoding = "2"
+qrcode = "0.14"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1"
+solana-pubkey = { version = "4.3.0", features = ["curve25519", "sha2"] }
+ureq = "2"
+# Dependencies are added module-by-module as the implementation lands, so the
+# build stays fast and each addition is justified. `money` and `domain` are
+# pure std and need nothing.
+
+[dev-dependencies]
+serde_json = "1"

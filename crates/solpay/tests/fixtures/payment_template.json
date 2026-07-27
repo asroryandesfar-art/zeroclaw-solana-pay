@@ -1,0 +1,33 @@
+{
+  "slot": 479289577,
+  "meta": {
+    "err": null,
+    "preTokenBalances": [
+      {
+        "accountIndex": 1,
+        "mint": "__MINT__",
+        "owner": "__OWNER__",
+        "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "uiTokenAmount": { "amount": "__PRE__", "decimals": 6, "uiAmountString": "__PRE_UI__" }
+      }
+    ],
+    "postTokenBalances": [
+      {
+        "accountIndex": 1,
+        "mint": "__MINT__",
+        "owner": "__OWNER__",
+        "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "uiTokenAmount": { "amount": "__POST__", "decimals": 6, "uiAmountString": "__POST_UI__" }
+      }
+    ]
+  },
+  "transaction": {
+    "message": {
+      "accountKeys": [
+        { "pubkey": "7tvCVTwWw7yuvTY4mEXyN7JKBg44saYNdahESURMMLXk", "signer": true, "source": "transaction", "writable": true },
+        { "pubkey": "__ACCOUNT__", "signer": false, "source": "transaction", "writable": true },
+        { "pubkey": "__REF__", "signer": false, "source": "transaction", "writable": false }
+      ]
+    }
+  }
+}

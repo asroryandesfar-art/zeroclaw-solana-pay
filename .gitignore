@@ -1,0 +1,19 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Secrets & runtime state (NEVER commit)
+.env
+agent/data/*
+!agent/data/.gitkeep
+agent/logs/*
+!agent/logs/.gitkeep
+agent/data/tmp/
+
+# Throwaway devnet keys used by E2E
+tests/e2e/.keys/
+*.devnet.json
+
+# OS / editor
+.DS_Store
+*.swp

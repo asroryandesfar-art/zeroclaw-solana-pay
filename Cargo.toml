@@ -1,0 +1,19 @@
+# Workspace root. One dependency graph, one lockfile, shared lints/profile.
+# Present as a workspace (single member today) so future crates — e.g. a
+# read-only dashboard over the same SQLite ledger — cost nothing to add.
+[workspace]
+resolver = "2"
+members = ["crates/solpay"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/asrory/zeroclaw-solana-pay"
+rust-version = "1.96"
+
+# Money-critical code: keep release builds predictable and overflow-checked.
+# An arithmetic overflow on funds must panic loudly, never wrap silently.
+[profile.release]
+overflow-checks = true
+panic = "abort"

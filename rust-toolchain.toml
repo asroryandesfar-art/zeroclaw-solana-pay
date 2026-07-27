@@ -1,0 +1,10 @@
+# Toolchain selection for reproducible builds.
+#
+# We pin to `stable` here because this project targets current stable Rust and
+# builds/tests are validated against it in CI. Contributors on a fresh machine
+# get a known-good toolchain with rustfmt + clippy already present in the
+# default stable profile (so no extra component sync is required).
+#
+# NOTE: for a hard version lock, CI can override with `RUSTUP_TOOLCHAIN=1.96.0`.
+[toolchain]
+channel = "stable"
