@@ -25,7 +25,7 @@ qrcode = "0.14"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1"
 solana-pubkey = { version = "4.3.0", features = ["curve25519", "sha2"] }
-ureq = "2"
+ureq = "3"
 # Dependencies are added module-by-module as the implementation lands, so the
 # build stays fast and each addition is justified. `money` and `domain` are
 # pure std and need nothing.
