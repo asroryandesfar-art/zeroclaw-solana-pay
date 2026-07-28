@@ -32,6 +32,10 @@ URL="$(printf '%s' "$INVOICE_JSON" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)"
 MINT="$(printf '%s' "$INVOICE_JSON" | grep -o '"mint":"[^"]*"' | cut -d'"' -f4)"
 AMOUNT_BASE="$(printf '%s' "$INVOICE_JSON" | grep -o '"amount_base_units":[0-9]*' | cut -d: -f2)"
 
+# Save the invoice so `scripts/verify.sh` can check it with no arguments.
+mkdir -p "$ROOT/agent/data"
+printf 'LAST_REFERENCE=%s\nLAST_AMOUNT=%s\n' "$REFERENCE" "$AMOUNT_BASE" > "$ROOT/agent/data/last_invoice.env"
+
 echo
 echo "==> 2) render-qr  -> /tmp/solpay-demo.png"
 "$SOLPAY" render-qr --url "$URL" --out /tmp/solpay-demo.png
@@ -57,5 +61,7 @@ echo "==> 3) verify  (reference=$REFERENCE)"
   --rpc "$SOLANA_RPC_PRIMARY"
 
 echo
-echo "After paying on DEVNET, re-run to see PAID:"
-echo "  $SOLPAY verify --reference $REFERENCE --amount-base-units $AMOUNT_BASE --rpc $SOLANA_RPC_PRIMARY"
+echo "After paying on DEVNET, check status (any of these — no manual 'export' needed):"
+echo "  scripts/verify.sh                       # verifies THIS invoice (auto-loads .env)"
+echo "  scripts/verify.sh $REFERENCE"
+echo "  $SOLPAY verify --reference $REFERENCE --amount-base-units $AMOUNT_BASE --recipient $MERCHANT_WALLET --rpc $SOLANA_RPC_PRIMARY"

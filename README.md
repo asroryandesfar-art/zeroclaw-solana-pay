@@ -78,8 +78,9 @@ solpay create-url --amount 25 --token USDC --message "Table 4"
 # Render its QR (paste the "url" from above)
 solpay render-qr --url 'solana:...' --out /tmp/qr.png
 
-# Verify payment (returns paid | pending | mismatch); paste the "reference"
-solpay verify --reference <ref> --amount-base-units 25000000
+# Verify payment (returns paid | pending | mismatch). `verify.sh` auto-loads .env
+# so you never need to export anything; pass the reference (or none for the last one).
+scripts/verify.sh <ref>
 ```
 
 Or just run **`scripts/demo.sh`**, which does create → QR → verify against devnet
