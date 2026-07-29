@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Fixed
+- Payment `reference` is now always **on-curve**. It was random 32 bytes (often
+  off-curve); strict wallets like **Solflare** reject an off-curve reference as an
+  "invalid address" (Phantom is lenient). Now compatible with Phantom and Solflare.
+
+### Fixed
 - Native **SOL** payments now verify. Wallets (e.g. Phantom) do **not** attach the
   Solana Pay `reference` to native SOL transfers, so SOL invoices are matched by
   the exact lamport amount credited to the **merchant wallet** (USDC stays
