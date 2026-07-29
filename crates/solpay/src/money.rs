@@ -14,6 +14,9 @@ use std::fmt;
 /// USDC (and USDC-devnet) use 6 decimals.
 pub const USDC_DECIMALS: u8 = 6;
 
+/// Native SOL uses 9 decimals (1 SOL = 1_000_000_000 lamports).
+pub const SOL_DECIMALS: u8 = 9;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum MoneyError {
     Empty,

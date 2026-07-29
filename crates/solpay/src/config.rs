@@ -28,7 +28,7 @@ use std::fmt;
 use solana_pubkey::Pubkey;
 
 use crate::domain::validation::{normalize_symbol, ChargeLimits};
-use crate::money::{parse_amount, USDC_DECIMALS};
+use crate::money::{parse_amount, SOL_DECIMALS, USDC_DECIMALS};
 use crate::solana::commitment::CommitmentLevel;
 use crate::solana::pubkey::{parse_merchant_wallet, parse_pubkey};
 
@@ -216,6 +216,46 @@ pub fn resolve_mint(
     })
 }
 
+/// The asset an invoice is denominated in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaymentAsset {
+    /// Native SOL (9 decimals).
+    Sol,
+    /// SPL token, e.g. USDC (6 decimals) — carries the resolved mint.
+    Spl { mint: Pubkey },
+}
+
+impl PaymentAsset {
+    /// Decimal places for the asset's amount.
+    pub fn decimals(&self) -> u8 {
+        match self {
+            PaymentAsset::Sol => SOL_DECIMALS,
+            PaymentAsset::Spl { .. } => USDC_DECIMALS,
+        }
+    }
+}
+
+/// Resolve the payment asset for a token symbol. `SOL` is native (no mint);
+/// `USDC` resolves to the per-cluster mint (or a `mint_override`). The token must
+/// be in `allowlist`.
+pub fn resolve_asset(
+    token: &str,
+    cluster: Cluster,
+    mint_override: Option<&str>,
+    allowlist: &[String],
+) -> Result<PaymentAsset, ConfigError> {
+    let want = normalize_symbol(token);
+    if !allowlist.iter().any(|a| normalize_symbol(a) == want) {
+        return Err(ConfigError::TokenNotAllowed { token: want });
+    }
+    if want == "SOL" {
+        return Ok(PaymentAsset::Sol);
+    }
+    // Any allowed non-SOL token is an SPL token; resolve its mint.
+    let mint = resolve_mint(token, cluster, mint_override, allowlist)?;
+    Ok(PaymentAsset::Spl { mint })
+}
+
 /// Validate and order RPC endpoints (primary first). Requires `https`, except
 /// `http` is permitted for localhost (local test validator).
 pub fn resolve_rpc_endpoints(
@@ -248,12 +288,17 @@ fn validate_rpc_url(url: &str) -> Result<String, ConfigError> {
     Err(ConfigError::InvalidRpcUrl { url: u.to_string() })
 }
 
-/// Parse charge limits (decimal strings) into base-unit bounds.
-pub fn resolve_charge_limits(min: &str, max: &str) -> Result<ChargeLimits, ConfigError> {
-    let min_base = parse_amount(min, USDC_DECIMALS).map_err(|e| ConfigError::InvalidLimit {
+/// Parse charge limits (decimal strings) into base-unit bounds for the given
+/// number of `decimals` (6 for USDC, 9 for SOL).
+pub fn resolve_charge_limits(
+    min: &str,
+    max: &str,
+    decimals: u8,
+) -> Result<ChargeLimits, ConfigError> {
+    let min_base = parse_amount(min, decimals).map_err(|e| ConfigError::InvalidLimit {
         detail: format!("MIN_CHARGE: {e}"),
     })?;
-    let max_base = parse_amount(max, USDC_DECIMALS).map_err(|e| ConfigError::InvalidLimit {
+    let max_base = parse_amount(max, decimals).map_err(|e| ConfigError::InvalidLimit {
         detail: format!("MAX_CHARGE: {e}"),
     })?;
     if min_base == 0 {
@@ -347,6 +392,15 @@ pub fn mint_from(
     resolve_mint(token, cluster, mint_flag, &allowlist_from_env())
 }
 
+/// Payment asset (SOL or SPL/USDC) for `token`, using the env allowlist.
+pub fn asset_from(
+    token: &str,
+    cluster: Cluster,
+    mint_flag: Option<&str>,
+) -> Result<PaymentAsset, ConfigError> {
+    resolve_asset(token, cluster, mint_flag, &allowlist_from_env())
+}
+
 /// RPC endpoints from flags or `SOLANA_RPC_PRIMARY` / `SOLANA_RPC_FALLBACK`.
 pub fn rpc_endpoints_from(
     primary_flag: Option<&str>,
@@ -361,9 +415,14 @@ pub fn rpc_endpoints_from(
     resolve_rpc_endpoints(primary.as_deref(), fallback.as_deref())
 }
 
-/// Charge limits from `MIN_CHARGE` / `MAX_CHARGE` (defaults 0.01 / 1000).
-pub fn charge_limits_from_env() -> Result<ChargeLimits, ConfigError> {
-    resolve_charge_limits(&env_or("MIN_CHARGE", "0.01"), &env_or("MAX_CHARGE", "1000"))
+/// Charge limits from `MIN_CHARGE` / `MAX_CHARGE` (defaults 0.01 / 1000),
+/// interpreted in the asset's `decimals`.
+pub fn charge_limits_from_env(decimals: u8) -> Result<ChargeLimits, ConfigError> {
+    resolve_charge_limits(
+        &env_or("MIN_CHARGE", "0.01"),
+        &env_or("MAX_CHARGE", "1000"),
+        decimals,
+    )
 }
 
 /// Store label from `--label` flag or `STORE_LABEL` (default "ZeroClaw Store").
@@ -490,16 +549,40 @@ mod tests {
 
     #[test]
     fn charge_limits_validated() {
-        let l = resolve_charge_limits("0.01", "1000").unwrap();
+        // USDC (6 decimals)
+        let l = resolve_charge_limits("0.01", "1000", USDC_DECIMALS).unwrap();
         assert_eq!(l.min_base_units, 10_000);
         assert_eq!(l.max_base_units, 1_000_000_000);
+        // SOL (9 decimals): same decimal strings scale to lamports
+        let s = resolve_charge_limits("0.01", "1000", SOL_DECIMALS).unwrap();
+        assert_eq!(s.min_base_units, 10_000_000);
+        assert_eq!(s.max_base_units, 1_000_000_000_000);
         assert!(matches!(
-            resolve_charge_limits("0", "1000"),
+            resolve_charge_limits("0", "1000", USDC_DECIMALS),
             Err(ConfigError::InvalidLimit { .. })
         ));
         assert!(matches!(
-            resolve_charge_limits("5", "1"),
+            resolve_charge_limits("5", "1", USDC_DECIMALS),
             Err(ConfigError::InvalidLimit { .. })
+        ));
+    }
+
+    #[test]
+    fn asset_resolution_sol_vs_spl() {
+        let allow = vec!["USDC".to_string(), "SOL".to_string()];
+        assert_eq!(
+            resolve_asset("SOL", Cluster::Devnet, None, &allow),
+            Ok(PaymentAsset::Sol)
+        );
+        assert_eq!(PaymentAsset::Sol.decimals(), 9);
+        match resolve_asset("USDC", Cluster::Devnet, None, &allow).unwrap() {
+            PaymentAsset::Spl { mint } => assert_eq!(mint.to_string(), USDC_MINT_DEVNET),
+            other => panic!("expected Spl, got {other:?}"),
+        }
+        // token not in allowlist is rejected
+        assert!(matches!(
+            resolve_asset("SOL", Cluster::Devnet, None, &["USDC".to_string()]),
+            Err(ConfigError::TokenNotAllowed { .. })
         ));
     }
 

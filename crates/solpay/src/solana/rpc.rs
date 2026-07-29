@@ -37,7 +37,7 @@ use serde_json::Value;
 use solana_pubkey::Pubkey;
 
 use super::commitment::CommitmentLevel;
-use super::model::{SignatureRecord, TokenBalanceDelta, TransactionEvidence};
+use super::model::{AccountLamportDelta, SignatureRecord, TokenBalanceDelta, TransactionEvidence};
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -261,11 +261,37 @@ pub fn parse_transaction_response(result: &Value) -> Result<Option<TransactionEv
         });
     }
 
+    // Native SOL balance changes, aligned by account index with `keys`.
+    let pre_balances = meta
+        .get("preBalances")
+        .and_then(Value::as_array)
+        .unwrap_or(&empty);
+    let post_balances = meta
+        .get("postBalances")
+        .and_then(Value::as_array)
+        .unwrap_or(&empty);
+    let mut lamport_deltas = Vec::new();
+    let n = keys.len().min(pre_balances.len()).min(post_balances.len());
+    for i in 0..n {
+        let pre = pre_balances[i].as_u64().ok_or("preBalance is not a u64")?;
+        let post = post_balances[i]
+            .as_u64()
+            .ok_or("postBalance is not a u64")?;
+        if pre != post {
+            lamport_deltas.push(AccountLamportDelta {
+                account: keys[i].clone(),
+                pre,
+                post,
+            });
+        }
+    }
+
     Ok(Some(TransactionEvidence {
         slot,
         succeeded,
         account_keys: keys,
         token_deltas,
+        lamport_deltas,
     }))
 }
 

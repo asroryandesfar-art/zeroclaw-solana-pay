@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Native **SOL** payments alongside USDC. `create-url --token SOL` builds a
+  Solana Pay URL with no `spl-token` (native transfer, 9 decimals); `verify
+  --token SOL` checks the lamport delta credited to the merchant wallet. Verified
+  against a real devnet SOL payment. `TOKEN_ALLOWLIST` now defaults to `USDC,SOL`.
+
+### Changed
+- `create-url` JSON `mint` is `null` for native SOL invoices.
+- `scripts/demo.sh <amount> [token]` and `scripts/verify.sh` accept the token
+  (USDC or SOL); the last invoice's token is remembered.
+
 ## [0.1.0] — 2026-07-28
 
 ### Added

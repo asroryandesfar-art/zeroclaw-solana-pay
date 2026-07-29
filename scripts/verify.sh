@@ -19,6 +19,7 @@ SOLPAY="$(solpay_bin)"
 STATE="$ROOT/agent/data/last_invoice.env"
 REF="${1:-}"
 AMT="${2:-}"
+TOK="${TOKEN:-}"
 
 # Fall back to the last invoice created by scripts/demo.sh.
 if [[ -z "$REF" && -f "$STATE" ]]; then
@@ -26,16 +27,19 @@ if [[ -z "$REF" && -f "$STATE" ]]; then
   source "$STATE"
   REF="${LAST_REFERENCE:-}"
   AMT="${AMT:-${LAST_AMOUNT:-}}"
+  TOK="${TOK:-${LAST_TOKEN:-}}"
 fi
 
 [[ -n "$REF" ]] || die "no reference given and no saved invoice — run scripts/demo.sh first, or pass a reference"
 AMT="${AMT:-25000000}"
+TOK="${TOK:-USDC}"
 : "${SOLANA_RPC_PRIMARY:=https://api.devnet.solana.com}"
 
 [[ -n "${MERCHANT_WALLET:-}" ]] || die "MERCHANT_WALLET is not set — add it to .env (this script auto-loads .env)"
 
-echo "verify: reference=$REF amount_base_units=$AMT recipient=$MERCHANT_WALLET rpc=$SOLANA_RPC_PRIMARY"
+echo "verify: token=$TOK reference=$REF amount_base_units=$AMT recipient=$MERCHANT_WALLET rpc=$SOLANA_RPC_PRIMARY"
 exec "$SOLPAY" --format human verify \
+  --token "$TOK" \
   --reference "$REF" \
   --amount-base-units "$AMT" \
   --recipient "$MERCHANT_WALLET" \

@@ -10,10 +10,10 @@ use std::time::Duration;
 
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::config;
+use crate::config::{self, PaymentAsset};
 use crate::domain::validation::{validate_amount, validate_token};
 use crate::error::AppError;
-use crate::money::{format_base_units, parse_amount, USDC_DECIMALS};
+use crate::money::{format_base_units, parse_amount};
 use crate::output::{render, CreateUrlOutput, OutputFormat, RenderQrOutput, VerifyOutput};
 use crate::qr::{self, DEFAULT_PIXEL_SCALE, DEFAULT_QUIET_ZONE};
 use crate::solana::pay_url::{build_transfer_request_url, TransferRequest};
@@ -125,6 +125,9 @@ pub struct VerifyArgs {
     /// Exact expected amount in base units.
     #[arg(long)]
     pub amount_base_units: u64,
+    /// Invoice token: USDC (default) or SOL.
+    #[arg(long)]
+    pub token: Option<String>,
     /// Merchant wallet (locked). Defaults to MERCHANT_WALLET.
     #[arg(long)]
     pub recipient: Option<String>,
@@ -162,15 +165,16 @@ fn run_create_url(a: CreateUrlArgs) -> Result<CreateUrlOutput, AppError> {
     let recipient = config::recipient_from(a.recipient.as_deref())?;
 
     // The token symbol comes from the user/message, so an unsupported token is
-    // *invalid input* (exit 2) — validate it here, before the config-level mint
+    // *invalid input* (exit 2) — validate it here, before the config-level asset
     // resolution, so it is never misclassified as a config error (exit 3).
     validate_token(&a.token, &config::allowlist_from_env())?;
-    let mint = config::mint_from(&a.token, cluster, a.mint.as_deref())?;
+    let asset = config::asset_from(&a.token, cluster, a.mint.as_deref())?;
+    let decimals = asset.decimals();
 
-    let amount_base = parse_amount(&a.amount, USDC_DECIMALS)?;
-    let limits = config::charge_limits_from_env()?;
+    let amount_base = parse_amount(&a.amount, decimals)?;
+    let limits = config::charge_limits_from_env(decimals)?;
     validate_amount(amount_base, &limits)?;
-    let amount_ui = format_base_units(amount_base, USDC_DECIMALS);
+    let amount_ui = format_base_units(amount_base, decimals);
 
     // Reuse a provided reference (deterministic) or generate a secure one.
     let reference = match a.reference.as_deref() {
@@ -178,11 +182,17 @@ fn run_create_url(a: CreateUrlArgs) -> Result<CreateUrlOutput, AppError> {
         None => generate_reference().map_err(|e| AppError::internal(e.to_string()))?,
     };
 
+    // `None` mint = native SOL (URL omits spl-token); `Some` = SPL/USDC.
+    let mint = match &asset {
+        PaymentAsset::Sol => None,
+        PaymentAsset::Spl { mint } => Some(mint),
+    };
+
     let label = config::label_from(a.label.as_deref());
     let url = build_transfer_request_url(&TransferRequest {
         recipient: &recipient,
         amount_ui: &amount_ui,
-        spl_token: &mint,
+        spl_token: mint,
         reference: &reference,
         label: &label,
         message: a.message.as_deref(),
@@ -192,7 +202,7 @@ fn run_create_url(a: CreateUrlArgs) -> Result<CreateUrlOutput, AppError> {
         reference: reference.to_string(),
         url,
         recipient: recipient.to_string(),
-        mint: mint.to_string(),
+        mint: mint.map(|m| m.to_string()),
         token: crate::domain::validation::normalize_symbol(&a.token),
         cluster: cluster.as_str().to_string(),
         amount_base_units: amount_base,
@@ -228,8 +238,9 @@ fn map_qr_error(e: qr::QrError) -> AppError {
 fn run_verify(a: VerifyArgs) -> Result<VerifyOutput, AppError> {
     let cluster = config::cluster_from(a.cluster.as_deref())?;
     let recipient = config::recipient_from(a.recipient.as_deref())?;
-    // v1 verifies USDC; an explicit --mint override is still honored.
-    let mint = config::mint_from("USDC", cluster, a.mint.as_deref())?;
+    let token = a.token.as_deref().unwrap_or("USDC");
+    validate_token(token, &config::allowlist_from_env())?;
+    let asset = config::asset_from(token, cluster, a.mint.as_deref())?;
     let commitment = config::commitment_from(a.commitment.as_deref())?;
     let endpoints = config::rpc_endpoints_from(a.rpc.as_deref(), a.rpc_fallback.as_deref())?;
     let reference = parse_pubkey(&a.reference)?;
@@ -239,7 +250,16 @@ fn run_verify(a: VerifyArgs) -> Result<VerifyOutput, AppError> {
     let backoff = Duration::from_millis(config::u64_from_env("RPC_BACKOFF_BASE_MS", 250)?);
     let limit = a.signature_limit.unwrap_or(20);
 
-    let expected = Expected::new(reference, mint, recipient, a.amount_base_units, commitment);
+    // Build the expectation for the invoice's asset: SPL (USDC → merchant ATA)
+    // or native SOL (lamports → merchant wallet).
+    let expected = match asset {
+        PaymentAsset::Spl { mint } => {
+            Expected::new(reference, mint, recipient, a.amount_base_units, commitment)
+        }
+        PaymentAsset::Sol => {
+            Expected::new_sol(reference, recipient, a.amount_base_units, commitment)
+        }
+    };
     let client = RpcClient::new(UreqTransport::new(timeout), endpoints, retries, backoff);
 
     let verdict = verify_payment(&client, &expected, limit)?;

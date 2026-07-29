@@ -67,7 +67,8 @@ pub struct CreateUrlOutput {
     pub reference: String,
     pub url: String,
     pub recipient: String,
-    pub mint: String,
+    /// `null` for native SOL; the mint address for SPL tokens.
+    pub mint: Option<String>,
     pub token: String,
     pub cluster: String,
     pub amount_base_units: u64,
@@ -85,7 +86,7 @@ impl Human for CreateUrlOutput {
             self.amount_base_units,
             self.cluster,
             self.recipient,
-            self.mint,
+            self.mint.as_deref().unwrap_or("(native SOL)"),
             self.reference,
             self.url,
         );
@@ -215,7 +216,7 @@ mod tests {
             reference: "r".into(),
             url: "solana:x".into(),
             recipient: "rec".into(),
-            mint: "m".into(),
+            mint: Some("m".into()),
             token: "USDC".into(),
             cluster: "devnet".into(),
             amount_base_units: 25_000_000,

@@ -17,7 +17,7 @@ pub mod verify;
 
 pub use ata::associated_token_address;
 pub use commitment::{CommitmentLevel, ParseCommitmentError};
-pub use model::{SignatureRecord, TokenBalanceDelta, TransactionEvidence};
+pub use model::{AccountLamportDelta, SignatureRecord, TokenBalanceDelta, TransactionEvidence};
 pub use pay_url::{build_transfer_request_url, TransferRequest};
 pub use pubkey::{parse_merchant_wallet, parse_pubkey, PubkeyError};
 pub use reference::generate as generate_reference;
@@ -25,4 +25,6 @@ pub use rpc::{
     parse_signatures_response, parse_transaction_response, HttpTransport, RpcClient, RpcError,
     TransportError, UreqTransport,
 };
-pub use verify::{decide, evaluate, verify_payment, Candidate, Expected, TxOutcome, Verdict};
+pub use verify::{
+    decide, evaluate, verify_payment, Candidate, Expected, ExpectedAsset, TxOutcome, Verdict,
+};

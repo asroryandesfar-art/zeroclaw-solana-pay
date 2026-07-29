@@ -39,19 +39,31 @@ use super::model::TransactionEvidence;
 use super::rpc::{HttpTransport, RpcClient, RpcError};
 use solana_pubkey::Pubkey;
 
+/// The asset an invoice is denominated in.
+#[derive(Debug, Clone)]
+pub enum ExpectedAsset {
+    /// Native SOL: funds must be credited (lamports) to the merchant wallet.
+    Sol,
+    /// SPL token (e.g. USDC): funds must be credited to the merchant's ATA.
+    Spl { mint: Pubkey, recipient_ata: Pubkey },
+}
+
 /// The locked expectations an on-chain payment must satisfy. Construct via
-/// [`Expected::new`], which derives the merchant's associated token account so
-/// callers cannot accidentally pass the wrong destination.
+/// [`Expected::new`] (SPL/USDC — derives the merchant ATA) or
+/// [`Expected::new_sol`] (native SOL).
 #[derive(Debug, Clone)]
 pub struct Expected {
     pub reference: Pubkey,
-    pub mint: Pubkey,
-    pub recipient_ata: Pubkey,
+    /// The merchant wallet (native SOL destination, and ATA owner for SPL).
+    pub recipient: Pubkey,
     pub amount_base_units: u64,
     pub required_commitment: CommitmentLevel,
+    pub asset: ExpectedAsset,
 }
 
 impl Expected {
+    /// SPL-token invoice (e.g. USDC). Derives the merchant's associated token
+    /// account so the caller cannot pass the wrong destination.
     pub fn new(
         reference: Pubkey,
         mint: Pubkey,
@@ -62,10 +74,29 @@ impl Expected {
         let recipient_ata = associated_token_address(&merchant_wallet, &mint);
         Self {
             reference,
-            mint,
-            recipient_ata,
+            recipient: merchant_wallet,
             amount_base_units,
             required_commitment,
+            asset: ExpectedAsset::Spl {
+                mint,
+                recipient_ata,
+            },
+        }
+    }
+
+    /// Native SOL invoice: funds are credited directly to the merchant wallet.
+    pub fn new_sol(
+        reference: Pubkey,
+        merchant_wallet: Pubkey,
+        amount_base_units: u64,
+        required_commitment: CommitmentLevel,
+    ) -> Self {
+        Self {
+            reference,
+            recipient: merchant_wallet,
+            amount_base_units,
+            required_commitment,
+            asset: ExpectedAsset::Sol,
         }
     }
 }
@@ -120,10 +151,29 @@ pub fn evaluate(candidate: &Candidate, expected: &Expected) -> TxOutcome {
         return TxOutcome::MissingReference;
     }
 
-    let mint_str = expected.mint.to_string();
-    let ata_str = expected.recipient_ata.to_string();
+    // Checks 2, 3, 4 depend on the asset.
+    match &expected.asset {
+        ExpectedAsset::Spl {
+            mint,
+            recipient_ata,
+        } => evaluate_spl(candidate, expected.amount_base_units, mint, recipient_ata),
+        ExpectedAsset::Sol => {
+            evaluate_sol(candidate, expected.amount_base_units, &expected.recipient)
+        }
+    }
+}
 
-    // Checks 2, 3, 4 via balance deltas. u128 sum so crafted values can't wrap.
+/// SPL-token check: exact mint into the merchant ATA, amount ≥ expected.
+fn evaluate_spl(
+    candidate: &Candidate,
+    amount_base_units: u64,
+    mint: &Pubkey,
+    recipient_ata: &Pubkey,
+) -> TxOutcome {
+    let mint_str = mint.to_string();
+    let ata_str = recipient_ata.to_string();
+
+    // u128 sum so crafted values can't wrap.
     let mut received: u128 = 0;
     for d in &candidate.evidence.token_deltas {
         if d.account == ata_str && d.mint == mint_str {
@@ -131,12 +181,11 @@ pub fn evaluate(candidate: &Candidate, expected: &Expected) -> TxOutcome {
         }
     }
 
-    let amount = expected.amount_base_units as u128;
+    let amount = amount_base_units as u128;
     if received >= amount {
         return TxOutcome::Paid;
     }
     if received > 0 {
-        // Correct destination & mint, but not enough arrived.
         return TxOutcome::Underpaid {
             got: received as u64,
         };
@@ -159,6 +208,22 @@ pub fn evaluate(candidate: &Candidate, expected: &Expected) -> TxOutcome {
     } else if wrong_mint_inflow {
         TxOutcome::WrongMint
     } else {
+        TxOutcome::WrongRecipient
+    }
+}
+
+/// Native SOL check: lamports credited to the merchant wallet, amount ≥ expected.
+fn evaluate_sol(candidate: &Candidate, amount_base_units: u64, recipient: &Pubkey) -> TxOutcome {
+    let received = candidate.evidence.lamport_increase(&recipient.to_string()) as u128;
+    let amount = amount_base_units as u128;
+    if received >= amount {
+        TxOutcome::Paid
+    } else if received > 0 {
+        TxOutcome::Underpaid {
+            got: received as u64,
+        }
+    } else {
+        // No SOL reached the merchant wallet (e.g. paid a token, or wrong wallet).
         TxOutcome::WrongRecipient
     }
 }
@@ -285,6 +350,23 @@ mod tests {
                 pre,
                 post,
             }],
+            ..Default::default()
+        }
+    }
+
+    /// Build native-SOL evidence: `post-pre` lamports credited to `wallet`, with
+    /// `reference` present, succeeded.
+    fn sol_evidence(wallet: &str, pre: u64, post: u64, reference: &str) -> TransactionEvidence {
+        TransactionEvidence {
+            slot: 42,
+            succeeded: true,
+            account_keys: vec!["payer".into(), wallet.to_string(), reference.to_string()],
+            lamport_deltas: vec![crate::solana::model::AccountLamportDelta {
+                account: wallet.to_string(),
+                pre,
+                post,
+            }],
+            ..Default::default()
         }
     }
 
@@ -629,6 +711,61 @@ mod tests {
         assert_eq!(
             evaluate(&candidate(ev, CommitmentLevel::Confirmed), &exp),
             TxOutcome::Paid
+        );
+    }
+
+    // ---- native SOL ----
+    fn expected_sol(amount: u64) -> Expected {
+        Expected::new_sol(pk(USDC), pk(MERCHANT), amount, CommitmentLevel::Confirmed)
+    }
+
+    #[test]
+    fn sol_payment_to_wallet_is_paid() {
+        let exp = expected_sol(1_000_000_000); // 1 SOL
+        let ev = sol_evidence(MERCHANT, 0, 1_000_000_000, &reference_of(&exp));
+        assert_eq!(
+            evaluate(&candidate(ev, CommitmentLevel::Confirmed), &exp),
+            TxOutcome::Paid
+        );
+    }
+
+    #[test]
+    fn sol_underpayment_is_flagged() {
+        let exp = expected_sol(1_000_000_000);
+        let ev = sol_evidence(MERCHANT, 0, 400_000_000, &reference_of(&exp));
+        assert_eq!(
+            evaluate(&candidate(ev, CommitmentLevel::Confirmed), &exp),
+            TxOutcome::Underpaid { got: 400_000_000 }
+        );
+    }
+
+    #[test]
+    fn sol_to_wrong_wallet_is_not_paid() {
+        let exp = expected_sol(1_000_000_000);
+        // Lamports credited to some other wallet, not the merchant.
+        let ev = sol_evidence("someOtherWallet", 0, 1_000_000_000, &reference_of(&exp));
+        assert_eq!(
+            evaluate(&candidate(ev, CommitmentLevel::Confirmed), &exp),
+            TxOutcome::WrongRecipient
+        );
+    }
+
+    #[test]
+    fn sol_invoice_ignores_token_transfer() {
+        // A USDC token transfer must NOT satisfy a SOL invoice (this is exactly
+        // the "paid SOL for a USDC invoice" situation, inverted).
+        let exp = expected_sol(1_000_000_000);
+        let ev = evidence_with(
+            &merchant_ata(),
+            USDC,
+            0,
+            25_000_000,
+            &reference_of(&exp),
+            true,
+        );
+        assert_eq!(
+            evaluate(&candidate(ev, CommitmentLevel::Confirmed), &exp),
+            TxOutcome::WrongRecipient
         );
     }
 

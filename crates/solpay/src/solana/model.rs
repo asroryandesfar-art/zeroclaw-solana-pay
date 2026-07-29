@@ -42,8 +42,23 @@ impl TokenBalanceDelta {
     }
 }
 
-/// Everything the verifier needs from one `getTransaction` result.
+/// A native SOL balance change for a single account, in lamports.
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountLamportDelta {
+    pub account: String,
+    pub pre: u64,
+    pub post: u64,
+}
+
+impl AccountLamportDelta {
+    /// Net lamport increase (0 for a decrease or no change), saturating.
+    pub fn increase(&self) -> u64 {
+        self.post.saturating_sub(self.pre)
+    }
+}
+
+/// Everything the verifier needs from one `getTransaction` result.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TransactionEvidence {
     pub slot: u64,
     /// True if the transaction succeeded on-chain (`meta.err == null`).
@@ -53,12 +68,24 @@ pub struct TransactionEvidence {
     /// used by `accountIndex` references.
     pub account_keys: Vec<String>,
     pub token_deltas: Vec<TokenBalanceDelta>,
+    /// Native SOL lamport deltas per account (from `meta.pre/postBalances`),
+    /// used to verify native SOL payments.
+    pub lamport_deltas: Vec<AccountLamportDelta>,
 }
 
 impl TransactionEvidence {
     /// Whether the given reference key appears among the transaction's accounts.
     pub fn contains_account(&self, address: &str) -> bool {
         self.account_keys.iter().any(|k| k == address)
+    }
+
+    /// Net native SOL increase (lamports) credited to `account` in this tx.
+    pub fn lamport_increase(&self, account: &str) -> u64 {
+        self.lamport_deltas
+            .iter()
+            .filter(|d| d.account == account)
+            .map(|d| d.increase())
+            .sum()
     }
 }
 
@@ -92,10 +119,32 @@ mod tests {
             slot: 1,
             succeeded: true,
             account_keys: vec!["ref111".into(), "acc222".into()],
-            token_deltas: vec![],
+            ..Default::default()
         };
         assert!(ev.contains_account("ref111"));
         assert!(!ev.contains_account("ref"));
         assert!(!ev.contains_account("REF111"));
+    }
+
+    #[test]
+    fn lamport_increase_sums_credited_accounts() {
+        let ev = TransactionEvidence {
+            account_keys: vec!["payer".into(), "merchant".into()],
+            lamport_deltas: vec![
+                AccountLamportDelta {
+                    account: "merchant".into(),
+                    pre: 0,
+                    post: 1_000_000_000,
+                },
+                AccountLamportDelta {
+                    account: "payer".into(),
+                    pre: 2_000_000_000,
+                    post: 900_000_000,
+                },
+            ],
+            ..Default::default()
+        };
+        assert_eq!(ev.lamport_increase("merchant"), 1_000_000_000);
+        assert_eq!(ev.lamport_increase("payer"), 0); // outflow → 0
     }
 }

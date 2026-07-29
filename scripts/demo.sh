@@ -17,13 +17,14 @@ SOLPAY="$(solpay_bin)"
 : "${MERCHANT_WALLET:?set MERCHANT_WALLET (a devnet public key) in .env or the environment}"
 : "${STORE_LABEL:=ZeroClaw Coffee}"
 AMOUNT="${1:-25}"
+TOKEN="${2:-USDC}"   # USDC (SPL) or SOL (native)
 
 if [[ "$SOLANA_CLUSTER" != "devnet" ]]; then
   echo "WARNING: SOLANA_CLUSTER=$SOLANA_CLUSTER (not devnet). This demo is meant for devnet." >&2
 fi
 
-echo "==> 1) create-url  (amount=$AMOUNT USDC, cluster=$SOLANA_CLUSTER)"
-INVOICE_JSON="$("$SOLPAY" create-url --amount "$AMOUNT" --token USDC \
+echo "==> 1) create-url  (amount=$AMOUNT $TOKEN, cluster=$SOLANA_CLUSTER)"
+INVOICE_JSON="$("$SOLPAY" create-url --amount "$AMOUNT" --token "$TOKEN" \
   --label "$STORE_LABEL (Devnet)" --message "Demo table")"
 echo "$INVOICE_JSON"
 
@@ -34,7 +35,8 @@ AMOUNT_BASE="$(printf '%s' "$INVOICE_JSON" | grep -o '"amount_base_units":[0-9]*
 
 # Save the invoice so `scripts/verify.sh` can check it with no arguments.
 mkdir -p "$ROOT/agent/data"
-printf 'LAST_REFERENCE=%s\nLAST_AMOUNT=%s\n' "$REFERENCE" "$AMOUNT_BASE" > "$ROOT/agent/data/last_invoice.env"
+printf 'LAST_REFERENCE=%s\nLAST_AMOUNT=%s\nLAST_TOKEN=%s\n' \
+  "$REFERENCE" "$AMOUNT_BASE" "$TOKEN" > "$ROOT/agent/data/last_invoice.env"
 
 echo
 echo "==> 2) render-qr  -> /tmp/solpay-demo.png"
@@ -50,18 +52,18 @@ echo "  |  The token in this QR exists ONLY on devnet, so a real mainnet USDC   
 echo "  |  payment is impossible from this QR.                                  |"
 echo "  +----------------------------------------------------------------------+"
 echo "  QR image:      /tmp/solpay-demo.png"
-echo "  Token mint:    $MINT   (devnet-only)"
+echo "  Pay with:      $TOKEN   (${MINT:-native SOL}, devnet-only)"
 echo "  Watch on the DEVNET explorer:"
 echo "    https://explorer.solana.com/address/$REFERENCE?cluster=devnet"
 
 echo
 echo "==> 3) verify  (reference=$REFERENCE)"
 "$SOLPAY" --format human verify \
-  --reference "$REFERENCE" --amount-base-units "$AMOUNT_BASE" \
+  --token "$TOKEN" --reference "$REFERENCE" --amount-base-units "$AMOUNT_BASE" \
   --rpc "$SOLANA_RPC_PRIMARY"
 
 echo
 echo "After paying on DEVNET, check status (any of these — no manual 'export' needed):"
 echo "  scripts/verify.sh                       # verifies THIS invoice (auto-loads .env)"
 echo "  scripts/verify.sh $REFERENCE"
-echo "  $SOLPAY verify --reference $REFERENCE --amount-base-units $AMOUNT_BASE --recipient $MERCHANT_WALLET --rpc $SOLANA_RPC_PRIMARY"
+echo "  $SOLPAY verify --token $TOKEN --reference $REFERENCE --amount-base-units $AMOUNT_BASE --recipient $MERCHANT_WALLET --rpc $SOLANA_RPC_PRIMARY"

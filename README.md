@@ -55,9 +55,10 @@ The LLM only reads language. Every decision about money is deterministic code.
 - **Non-custodial** — receiving public key only; no signing, no fund custody.
 - **LLM quarantined** — the model never computes an amount or decides "is this paid?"
 - **Tier-1 ZeroClaw** — channels, SOP (deterministic mode), cron, and memory built-ins; the only bespoke code is a stateless Rust CLI.
+- **USDC or native SOL** — invoice and verify in USDC (SPL) or SOL (`--token SOL`); both verified against real devnet payments.
 - **Correct by construction** — integer-only money math, exact-mint check (anti fake-USDC), exact-amount check, reference-based replay resistance, `confirmed`/`finalized` gating.
 - **Resilient** — RPC failover + bounded retries with jitter; an unreachable node keeps an invoice *pending*, never falsely *paid* or *failed*.
-- **Reproducible** — pinned toolchain, committed lockfile, one `make` surface, 107 tests.
+- **Reproducible** — pinned toolchain, committed lockfile, one `make` surface, 114 tests.
 
 ---
 
@@ -134,8 +135,8 @@ Every command supports `--help` and `--format json` (default) or `--format human
 from the message or the LLM:
 
 1. the transaction includes this invoice's unique **reference**,
-2. the token is the **exact USDC mint** (a token merely *named* "USDC" is rejected),
-3. funds landed in the **merchant's associated token account**,
+2. the token is the **exact USDC mint** (a token merely *named* "USDC" is rejected) — for a SOL invoice, the funds are native lamports,
+3. funds landed in the **merchant's associated token account** (USDC) or the **merchant wallet** (SOL),
 4. the **amount** meets or exceeds the expected base units,
 5. commitment is **≥ `confirmed`** (never `processed`), and the tx succeeded.
 

@@ -19,7 +19,7 @@ value rather than booting half-configured.
 | `ALLOW_MAINNET` | mainnet safety interlock | must be `true` to use mainnet | `false` |
 | `MERCHANT_WALLET` | receiving **public** key | base58, **on-curve** (not an ATA/PDA) | — (required) |
 | `STORE_LABEL` | label in wallet + QR | any text | `ZeroClaw Store` |
-| `TOKEN_ALLOWLIST` | accepted symbols (comma) | non-empty | `USDC` |
+| `TOKEN_ALLOWLIST` | accepted symbols (comma); `USDC` (SPL) and/or `SOL` (native) | non-empty | `USDC,SOL` |
 | `MIN_CHARGE` | lower bound (decimal) | `> 0`, ≤ `MAX_CHARGE` | `0.01` |
 | `MAX_CHARGE` | upper bound (decimal) | ≥ `MIN_CHARGE` | `1000` |
 | `PAYMENT_COMMITMENT` | settlement bar | `confirmed`/`finalized`; **`processed` rejected** | `confirmed` |
@@ -56,9 +56,11 @@ The mint is resolved from a table, never from free text (the anti-fake-USDC seam
 | Symbol | mainnet-beta | devnet |
 |---|---|---|
 | `USDC` | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` | `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` |
+| `SOL` | native (no mint, 9 decimals) | native (no mint, 9 decimals) |
 
-A `--mint` override is honored, but the token symbol must still be in
-`TOKEN_ALLOWLIST`.
+A `--mint` override is honored for SPL tokens, but the token symbol must still be
+in `TOKEN_ALLOWLIST`. `SOL` is native — the Solana Pay URL omits `spl-token` and
+verification checks the lamport delta credited to the merchant wallet.
 
 ## Secret handling
 
