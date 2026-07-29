@@ -63,6 +63,7 @@ echo
 echo "==> 3) verify  (reference=$REFERENCE)"
 "$SOLPAY" --format human verify \
   --token "$TOKEN" --reference "$REFERENCE" --amount-base-units "$AMOUNT_BASE" \
+  --signature-limit 6 \
   --rpc "$SOLANA_RPC_PRIMARY"
 
 echo

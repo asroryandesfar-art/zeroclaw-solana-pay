@@ -149,6 +149,12 @@ real USDC uses, with a token you fully control.
   succeeds (`CreateIdempotent` + `TransferChecked`, `err: null`). Scanning the QR
   and approving still moves the funds. If a wallet refuses to spend a token it
   doesn't display, pay from a wallet that shows it, or use the **SOL** flow.
+- **Public devnet RPC rate-limits.** SOL verification scans the merchant wallet's
+  recent transactions; on a **busy** wallet with the free `api.devnet.solana.com`,
+  rapid/repeated calls can return `all RPC endpoints are unavailable` (HTTP 429).
+  It's transient — wait a few seconds and re-run `scripts/verify.sh`, keep a small
+  `--signature-limit`, or set a paid RPC in `SOLANA_RPC_PRIMARY`. **USDC**
+  verification is reference-based (a single lookup) and does not hit this.
 
 ---
 

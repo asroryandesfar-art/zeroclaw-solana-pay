@@ -34,6 +34,10 @@ fi
 AMT="${AMT:-25000000}"
 TOK="${TOK:-USDC}"
 : "${SOLANA_RPC_PRIMARY:=https://api.devnet.solana.com}"
+# Small signature limit: SOL is matched by the merchant wallet's recent txs, and
+# a busy wallet + public RPC will rate-limit (429) if we fetch too many. The
+# payment is the most recent tx right after paying. Override with SIG_LIMIT.
+: "${SIG_LIMIT:=6}"
 
 # Use .env's MERCHANT_WALLET if present; otherwise fall back to the demo wallet.
 : "${MERCHANT_WALLET:=$DEMO_MERCHANT_WALLET}"
@@ -45,4 +49,5 @@ exec "$SOLPAY" --format human verify \
   --reference "$REF" \
   --amount-base-units "$AMT" \
   --recipient "$MERCHANT_WALLET" \
+  --signature-limit "$SIG_LIMIT" \
   --rpc "$SOLANA_RPC_PRIMARY"
