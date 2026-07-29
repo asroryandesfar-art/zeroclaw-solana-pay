@@ -26,15 +26,17 @@ Legend: ✅ done & verified in this repo · ⬜ operator step before a live/main
 
 ## Demo end-to-end (verified on real devnet)
 
-- ✅ create invoice → Solana Pay URL (devnet USDC mint)
+- ✅ create invoice → Solana Pay URL (USDC: `spl-token` mint; SOL: native, no `spl-token`)
 - ✅ generate QR (PNG)
 - ✅ scan + pay — payer's wallet must be on **Devnet** (a Solana Pay URL has no
   cluster field; see `docs/DEMO.md`)
-- ✅ verify → `pending` before payment; `paid` after (five on-chain checks)
-- ✅ `scripts/verify.sh` auto-loads `.env` (no manual `export`; fixes the
-  "MERCHANT_WALLET is not set" foot-gun)
-- ⬜ Observe a fresh `pending → paid` on camera (needs a funded devnet USDC
-  wallet; run `scripts/demo.sh 25`, pay the QR, then `scripts/verify.sh`)
+- ✅ **USDC** verify → PAID on a real devnet payment (reference-bound)
+- ✅ **SOL** verify → PAID on a real devnet payment (matched by merchant
+  wallet + amount, since wallets drop the reference for native SOL)
+- ✅ `scripts/verify.sh` auto-loads `.env` and the invoice token (no manual
+  `export`); `scripts/demo.sh <amount> [USDC|SOL]`
+- ⬜ Record a fresh `pending → paid` on camera (fund a devnet wallet; USDC via
+  faucet.circle.com, SOL via faucet.solana.com; use your OWN merchant wallet)
 
 ## Security
 

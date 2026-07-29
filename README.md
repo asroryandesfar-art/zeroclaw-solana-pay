@@ -90,6 +90,38 @@ for you. Full walkthrough (including WhatsApp + the ZeroClaw agent) is in
 
 ---
 
+## Paying in USDC or SOL (devnet, end-to-end)
+
+Both are verified against real devnet payments. Use a **dedicated merchant
+wallet** you control (set `MERCHANT_WALLET` in `.env`) and switch **Phantom to
+Devnet** (Settings → Developer Settings → Testnet Mode → Solana Devnet).
+
+**USDC** — reference-bound (the wallet embeds the Solana Pay reference):
+
+```bash
+# fund the payer wallet with devnet USDC (mint 4zMMC9…) via faucet.circle.com
+scripts/demo.sh 1 USDC          # create invoice → QR (/tmp/solpay-demo.png)
+# scan the QR in Phantom (Devnet) and approve
+scripts/verify.sh               # → PAID ✅
+```
+
+**SOL** — native (no `spl-token` in the URL):
+
+```bash
+# fund the payer wallet with devnet SOL via faucet.solana.com
+scripts/demo.sh 0.05 SOL        # create invoice → QR
+# scan the QR in Phantom (Devnet) and approve
+scripts/verify.sh               # → PAID ✅
+```
+
+> **How verification differs:** USDC is matched by the unique Solana Pay
+> **reference** (Phantom includes it for SPL tokens). Phantom does **not** attach
+> the reference to *native SOL* transfers, so SOL is matched by the exact lamport
+> amount credited to the **merchant wallet** — use a dedicated (non-busy) wallet,
+> and USDC when you need strict per-invoice binding.
+
+---
+
 ## The `solpay` helper
 
 A single stateless binary. The agent never does math on money; it calls these.
