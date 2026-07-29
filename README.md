@@ -137,6 +137,19 @@ scripts/mint_test_token.sh <your-phantom-payer-wallet>   # needs solana + spl-to
 This exercises the identical SPL path (reference + ATA + exact-mint + amount) that
 real USDC uses, with a token you fully control.
 
+### Wallet notes (devnet)
+
+- **Solflare** does not properly support Solana Pay on **devnet** (it rejects the
+  QR as an "invalid address" even though the URI is valid). Use **Phantom** for
+  devnet Solana Pay.
+- **Phantom (Android)** may **not display** a devnet USDC balance: Circle's devnet
+  USDC (`4zMMC9…`) has no on-chain Metaplex metadata and isn't in Phantom's devnet
+  token list. This is a wallet UI limitation, **not** a payment problem — a
+  `simulateTransaction` of the exact Solana Pay USDC transfer from a funded ATA
+  succeeds (`CreateIdempotent` + `TransferChecked`, `err: null`). Scanning the QR
+  and approving still moves the funds. If a wallet refuses to spend a token it
+  doesn't display, pay from a wallet that shows it, or use the **SOL** flow.
+
 ---
 
 ## The `solpay` helper
