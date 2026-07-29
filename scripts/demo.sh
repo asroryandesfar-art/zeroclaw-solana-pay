@@ -18,11 +18,8 @@ SOLPAY="$(solpay_bin)"
 : "${MERCHANT_WALLET:=$DEMO_MERCHANT_WALLET}"
 export MERCHANT_WALLET   # so the `solpay` QR generator picks it up
 : "${STORE_LABEL:=ZeroClaw Coffee}"
-AMOUNT="${1:-0.05}"
-# Default to SOL: it needs only devnet SOL (faucet.solana.com), whereas USDC
-# needs devnet USDC from faucet.circle.com (which some ISPs block). Use
-# `scripts/demo.sh <amount> USDC` for the USDC flow.
-TOKEN="${2:-SOL}"
+AMOUNT="${1:-1}"       # default charge: 1 (unit of the token below)
+TOKEN="${2:-USDC}"     # default asset: USDC. Use `scripts/demo.sh <amount> SOL` for native SOL.
 
 if [[ "$SOLANA_CLUSTER" != "devnet" ]]; then
   echo "WARNING: SOLANA_CLUSTER=$SOLANA_CLUSTER (not devnet). This demo is meant for devnet." >&2
