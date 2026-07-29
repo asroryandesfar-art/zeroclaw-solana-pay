@@ -16,5 +16,7 @@ The worst case from a host compromise is misleading invoice display or denial of
 service, not theft. See [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) for trust
 boundaries, threats, mitigations, and residual risks.
 
-Secrets live only in a git-ignored `.env`; configuration references them by
-env-var name. Never commit `.env`, `agent/data/`, or `agent/logs/`.
+For the `solpay` CLI, secrets live only in a git-ignored `.env`. For the
+ZeroClaw agent layer, WhatsApp/LLM secrets are set with `zeroclaw config set`
+and encrypted at rest in the ZeroClaw config directory — never committed to
+this repository. Never commit `.env`, `agent/data/`, or `agent/logs/`.

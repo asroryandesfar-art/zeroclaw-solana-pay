@@ -35,8 +35,7 @@ Legend: ✅ done & verified in this repo · ⬜ operator step before a live/main
   wallet + amount, since wallets drop the reference for native SOL)
 - ✅ `scripts/verify.sh` auto-loads `.env` and the invoice token (no manual
   `export`); `scripts/demo.sh <amount> [USDC|SOL]`
-- ⬜ Record a fresh `pending → paid` on camera (fund a devnet wallet; USDC via
-  faucet.circle.com, SOL via faucet.solana.com; use your OWN merchant wallet)
+- ✅ Recorded a fresh `pending → paid` on camera: https://youtu.be/t4aPitLXOmo
 
 ## Security
 
@@ -51,14 +50,15 @@ Legend: ✅ done & verified in this repo · ⬜ operator step before a live/main
 - ✅ Validate the ZeroClaw `agent/` layer against a real ZeroClaw runtime
   (v0.8.3): `zeroclaw config list/doctor`, `zeroclaw skills audit/list`,
   `zeroclaw sop validate` all green (see ADR 0005 / `scripts/setup.sh`)
-- ⬜ Record the 3-minute demo (`docs/DEMO.md`); include a real devnet
-  `pending → paid`
+- ✅ Recorded the 3-minute demo (`docs/DEMO.md`) with a real devnet
+  `pending → paid`: https://youtu.be/t4aPitLXOmo
+- ✅ Pasted the demo video URL into the README, `SUBMISSION.md`, `docs/DEMO.md`,
+  and the v0.1.0 GitHub Release notes
 - ⬜ Deploy: `scripts/setup.sh`, then edit `~/.zeroclaw/solpay.env`
   (set `MERCHANT_WALLET`)
 - ⬜ Set the WhatsApp + LLM secrets via `zeroclaw config set` (encrypted at rest)
 - ⬜ Set the staff allowlist:
   `zeroclaw config set peer_groups.whatsapp_staff.external_peers`
-- ⬜ Paste the demo video URL into the README and the submission form
 
 ## Mainnet cautions (only when truly ready)
 

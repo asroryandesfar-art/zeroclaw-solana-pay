@@ -214,6 +214,10 @@ An unknown/unreachable chain is treated as *pending*, never as a negative.
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 
+**Custody tier: T1 (Build)** — unsigned transactions only; the payer's wallet
+signs, the agent never holds a key. Tested against a real prompt-injection
+attempt (not just asserted): [`docs/PROMPT_INJECTION_TEST.md`](docs/PROMPT_INJECTION_TEST.md).
+
 ---
 
 ## Repository layout

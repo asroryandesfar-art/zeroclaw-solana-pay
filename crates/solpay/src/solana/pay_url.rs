@@ -13,6 +13,9 @@
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use solana_pubkey::Pubkey;
 
+/// Inputs to a Solana Pay transfer-request URL. Borrowed, not owned — callers
+/// already hold these values (parsed pubkeys, formatted amount) and this is
+/// built once per invoice.
 pub struct TransferRequest<'a> {
     pub recipient: &'a Pubkey,
     pub amount_ui: &'a str,

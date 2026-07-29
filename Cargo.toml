@@ -9,7 +9,7 @@ members = ["crates/solpay"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/asrory/zeroclaw-solana-pay"
+repository = "https://github.com/asroryandesfar-art/zeroclaw-solana-pay"
 rust-version = "1.96"
 
 # Money-critical code: keep release builds predictable and overflow-checked.

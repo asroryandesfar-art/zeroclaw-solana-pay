@@ -1,32 +1,64 @@
-# ZeroClaw × Solana — Bounty Submission
+# ZeroClaw × Solana Bounty — Showcase Write-up
 
 **Project:** ZeroClaw Solana Payment Assistant
-**Track:** Build Solana-native plugins/capabilities for ZeroClaw
+**Bounty:** [Build Solana-native plugins for Zeroclaw](https://superteam.fun/earn/listing/zeroclaw/) (Superteam Brasil)
 **Repo:** https://github.com/asroryandesfar-art/zeroclaw-solana-pay
 **Release:** [v0.1.0](https://github.com/asroryandesfar-art/zeroclaw-solana-pay/releases/tag/v0.1.0)
 **Demo video:** https://youtu.be/t4aPitLXOmo
 **License:** MIT OR Apache-2.0
 
+This write-up follows the submission format the bounty asks for: what it does,
+who it's for, which ZeroClaw features it uses, what was built, its custody
+tier and threat model, and links to reproduce it.
+
 ---
 
-## One line
+## What it does, and who it's for
 
-Turn WhatsApp into a **non-custodial** Solana Pay terminal: a staff member texts
-`Charge Table 4 25 USDC`, the agent replies with a QR, the customer pays in
-USDC or SOL, and the agent confirms **PAID** by verifying the transaction
-on-chain — with **no LLM anywhere on the money path**.
+A shop's staff messages their WhatsApp agent *"Charge Table 4, 25 USDC."*
+Seconds later the customer's phone shows a QR. They scan it, pay in USDC or
+SOL on Solana, and ~40 seconds later the staff channel reads
+`Invoice #124 Paid ✅` — confirmed by the agent independently polling the
+chain, not by trusting the customer's word.
 
-## Why it fits the bounty
+It's for any operator who wants to accept Solana payments through a chat they
+already run — a shop, a market stall, a small merchant — without running a
+payment gateway, without a hosted SaaS middleman, and without ever handing an
+AI agent a private key.
 
-- **Tier-1 ZeroClaw, no fork.** Built entirely on ZeroClaw built-ins — WhatsApp
-  channel, SOP engine (deterministic mode), cron, and memory — plus one small,
-  auditable Rust CLI invoked as a skill. No compiled plugin, no patched runtime.
-- **Solana-native.** Implements the Solana Pay transfer-request spec (URL + QR),
-  ATA derivation, and on-chain settlement verification over JSON-RPC, for both
-  SPL **USDC** and native **SOL**.
-- **Validated on a real ZeroClaw runtime** (v0.8.3, schema_version 3): the
-  config, skills, and SOPs load and pass `zeroclaw skills list`,
-  `zeroclaw sop validate`, and `zeroclaw doctor`.
+## Custody tier: **T1 (Build)**
+
+Unsigned transactions only. `solpay` constructs a Solana Pay transfer-request
+URL; the **customer's own wallet** builds and signs the actual transfer. The
+agent process never holds, generates, or uses a private key — verified: there
+is no `Keypair`, no `sign`, no transfer-submission code anywhere in the
+codebase (see [`docs/PROMPT_INJECTION_TEST.md`](docs/PROMPT_INJECTION_TEST.md)).
+Secrets held: **none** — `~/.zeroclaw/solpay.env` contains only a *public*
+receiving key and public parameters.
+
+## Which ZeroClaw features it uses (Tier 1 — stock release, zero plugins)
+
+- **WhatsApp channel** — `dm_policy = "allowlist"` gate, deny-by-default.
+- **SOP engine, deterministic mode** — two SOPs, no LLM round-trips at
+  settlement: `charge` (channel-triggered) and `verify-payments`
+  (cron-triggered, polling `getSignaturesForAddress` on the invoice
+  reference — the exact pattern the bounty describes as the T1 idiom).
+- **Skills** — three thin shell skills wrapping the `solpay` CLI
+  (`create-invoice`, `send-qr`, `check-payment`); the model-visible tool
+  schema exposes only `amount`/`token`/`message`, never a wallet.
+- **Memory (SQLite)** — the invoice ledger, single source of truth.
+- **Risk profile** — `allowed_commands` scoped to `solpay` only, high-risk
+  commands blocked.
+
+No plugin, no WASM, no fork of ZeroClaw — the release binary is used as-is.
+
+## What (if anything) had to be built
+
+One artifact outside ZeroClaw itself: `solpay`, a stateless Rust CLI
+(`create-url`, `render-qr`, `verify`) that does the Solana-specific work —
+Solana Pay URL construction, ATA derivation, and on-chain verification against
+five independent checks (reference, exact mint, recipient, amount, commitment
+level). It owns no database and no keys; state lives in ZeroClaw's memory.
 
 ## What makes it trustworthy
 
@@ -57,6 +89,34 @@ WhatsApp ──▶ ZeroClaw ──▶ NLU (LLM, JSON only) ──▶ SOP "charge
   Integer-only money math, canonical `solana-pubkey` crypto, no DB, no keys.
 - `agent/` — ZeroClaw `config.toml`, the `solpay` skill bundle, and the two SOPs.
 - The invoice ledger lives in ZeroClaw memory (SQLite) — single source of truth.
+
+## Prompt-injection test (required — funds are touched)
+
+Two attacks were tried against the real, running code — not asserted, tested:
+
+1. **Inject a `recipient` into the charge flow.** A malicious tool call with
+   an extra `recipient` field pointing at an attacker wallet was run through
+   ZeroClaw's actual argument-substitution algorithm, then the resulting
+   command was executed against the real `solpay` binary. **Result: PASS** —
+   the field has no placeholder to substitute into and is silently dropped;
+   the invoice always pays the operator's locked `MERCHANT_WALLET`.
+2. **Talk the agent into a "refund."** The codebase was searched for any
+   signing/keypair/transfer capability. **Result: none exists** — there is no
+   code path anywhere that could move funds, so there is nothing a social
+   engineering attempt can hijack.
+
+Full transcript, commands, and verdicts:
+[`docs/PROMPT_INJECTION_TEST.md`](docs/PROMPT_INJECTION_TEST.md).
+
+## Links to reproduce (config / SOPs / skills / code)
+
+- Agent config: [`agent/config.toml`](agent/config.toml)
+- Skills (model-visible tool schemas): [`agent/skills/solpay/`](agent/skills/solpay/)
+- SOPs: [`agent/sops/charge/`](agent/sops/charge/), [`agent/sops/verify-payments/`](agent/sops/verify-payments/)
+- Locked money-path config template (no secrets): [`agent/solpay.env.example`](agent/solpay.env.example)
+- `solpay` source: [`crates/solpay/src/`](crates/solpay/src/)
+- One-command deploy: [`scripts/setup.sh`](scripts/setup.sh)
+- Step-by-step setup: [`docs/SETUP.md`](docs/SETUP.md)
 
 ## Verification (reproduce in minutes)
 

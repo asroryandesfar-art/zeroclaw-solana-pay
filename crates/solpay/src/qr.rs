@@ -20,7 +20,9 @@ use std::path::Path;
 use image::{ImageBuffer, ImageFormat, Luma};
 use qrcode::{Color, QrCode};
 
+/// Pixels per QR module when `--scale` is not given.
 pub const DEFAULT_PIXEL_SCALE: u32 = 8;
+/// White border width, in modules, when `--quiet-zone` is not given.
 pub const DEFAULT_QUIET_ZONE: u32 = 4;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

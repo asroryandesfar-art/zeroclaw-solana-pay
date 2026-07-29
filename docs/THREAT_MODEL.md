@@ -52,6 +52,13 @@ funds**. Removing custody removes the highest-severity branch entirely.
 5. **Deny-by-default authorization.** An empty allowlist means nobody; onboarding
    staff is an explicit act.
 
+## Prompt-injection test
+
+Custody tier **T1 (Build)** — unsigned transactions, no keys held. See
+[`PROMPT_INJECTION_TEST.md`](PROMPT_INJECTION_TEST.md) for two tested attacks
+(injecting a recipient into the charge flow; talking the agent into a
+"refund") run against the real code, not just asserted.
+
 ## Reporting a vulnerability
 
 See [`../SECURITY.md`](../SECURITY.md). Please do not open a public issue for
