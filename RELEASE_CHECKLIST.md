@@ -6,7 +6,7 @@ Legend: ✅ done & verified in this repo · ⬜ operator step before a live/main
 
 - ✅ `cargo fmt --check` clean
 - ✅ `cargo clippy --workspace --all-targets -- -D warnings` clean (0 warnings)
-- ✅ `cargo test --workspace` — 107 tests pass (+1 live-devnet, `--ignored`)
+- ✅ `cargo test --workspace` — 115 tests pass (+1 live-devnet, `--ignored`)
 - ✅ `make check` green
 - ✅ Clean release build from scratch; `--locked` install runs
 - ✅ **Fresh `git clone` runs the whole README quickstart** (test → install →
@@ -48,14 +48,16 @@ Legend: ✅ done & verified in this repo · ⬜ operator step before a live/main
 
 ## Before submission (operator steps)
 
+- ✅ Validate the ZeroClaw `agent/` layer against a real ZeroClaw runtime
+  (v0.8.3): `zeroclaw config list/doctor`, `zeroclaw skills audit/list`,
+  `zeroclaw sop validate` all green (see ADR 0005 / `scripts/setup.sh`)
 - ⬜ Record the 3-minute demo (`docs/DEMO.md`); include a real devnet
   `pending → paid`
-- ⬜ Validate the ZeroClaw `agent/` layer on a ZeroClaw host:
-  `zeroclaw doctor && zeroclaw channel doctor` (config/SOP/skill are marked
-  `[verify]`)
-- ⬜ Fill `.env`: `WHATSAPP_TOKEN`, `WHATSAPP_VERIFY_TOKEN`,
-  `WHATSAPP_PHONE_NUMBER_ID`, `LLM_API_KEY`
-- ⬜ Set `allowed_users` in `agent/zeroclaw.toml` to staff phone numbers
+- ⬜ Deploy: `scripts/setup.sh`, then edit `~/.zeroclaw/solpay.env`
+  (set `MERCHANT_WALLET`)
+- ⬜ Set the WhatsApp + LLM secrets via `zeroclaw config set` (encrypted at rest)
+- ⬜ Set the staff allowlist:
+  `zeroclaw config set peer_groups.whatsapp_staff.external_peers`
 - ⬜ Paste the demo video URL into the README and the submission form
 
 ## Mainnet cautions (only when truly ready)

@@ -14,9 +14,9 @@ funds**. Removing custody removes the highest-severity branch entirely.
 
 | Trusted | Untrusted (validated) |
 |---|---|
-| the host + filesystem holding `.env` | WhatsApp message content |
-| `agent/zeroclaw.toml` (operator-owned) | LLM output (schema + bounds checked) |
-| whoever controls `allowed_users` | RPC responses (re-verified on-chain) |
+| the host + filesystem holding `~/.zeroclaw/solpay.env` | WhatsApp message content |
+| `agent/config.toml` + encrypted secret store (operator-owned) | LLM output (schema + bounds checked) |
+| whoever controls the staff allowlist (`peer_groups`) | RPC responses (re-verified on-chain) |
 | the compiled `solpay` binary | every customer / payer |
 
 ## Threats and mitigations
@@ -31,8 +31,9 @@ funds**. Removing custody removes the highest-severity branch entirely.
 | **Replay / cross-invoice** | unique 32-byte `reference` per invoice; the RPC query is *by* reference, and check 1 requires it | none |
 | **Double-settle / double-confirm** | ledger state guard: settle only while `PENDING`; re-verify is a no-op | none |
 | **RPC lies or is down** | verdict only from independently verified facts; unreachable ⇒ *pending*, never paid/failed | none for correctness (availability only) |
-| **Unauthorized sender** | ZeroClaw `allowed_users` deny-by-default allowlist | staff device compromise (out of scope) |
-| **Secret leakage** | `.env` git-ignored; config references secrets by env-var name; **no private keys exist** | RPC API key in URL — treat URL as secret |
+| **Unauthorized sender** | WhatsApp channel `dm_policy = "allowlist"` + `peer_groups` staff list, deny-by-default | staff device compromise (out of scope) |
+| **Command injection via skill args** | model supplies only `amount`/`token`/`message`; `solpay` rejects any non-numeric amount / non-allowlisted token (exit 2); the `solpay` risk profile blocks high-risk commands and scopes `allowed_commands` to `solpay` | a crafted arg is still string-substituted into the shell — depth from the risk profile, not the template |
+| **Secret leakage** | WhatsApp/LLM secrets are **encrypted at rest** in ZeroClaw's config dir (`[secrets] encrypt = true` + `.secret_key`); `solpay.env` holds only a **public** key and public params; **no private keys exist** | RPC API key in URL — treat that URL as secret |
 | **Amount overflow / crafted balances** | integer-only math with checked ops; balance summation in `u128` | none |
 | **Host compromise** | non-custodial ⇒ cannot move funds; audit log is append-only | invoice display / DoS |
 

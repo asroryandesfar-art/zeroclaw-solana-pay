@@ -1,0 +1,10 @@
+[sop]
+name = "verify-payments"
+description = "Every minute, re-check each PENDING invoice on-chain and transition it to PAID or keep it PENDING. Transient RPC errors never flip an invoice to a false state."
+version = "1.0.0"
+deterministic = true
+agent = "solpay"
+
+[[triggers]]
+type = "cron"
+expression = "0 * * * * *"

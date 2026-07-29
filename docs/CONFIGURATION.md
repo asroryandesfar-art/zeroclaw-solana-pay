@@ -1,15 +1,22 @@
 # Configuration
 
-Two planes, one secrets file. Nothing dangerous is ever taken from a message.
+Three places, clean separation. Nothing dangerous is ever taken from a message.
+The ZeroClaw layer is validated against **ZeroClaw v0.8.3** (schema_version 3).
 
-- **App plane** — `.env` (git-ignored): the payment domain + the only secret
-  values. Copy from [`.env.example`](../.env.example).
-- **Runtime plane** — `agent/zeroclaw.toml` (agent phase): how ZeroClaw runs
-  (LLM provider, memory, gateway, WhatsApp channel), referencing secrets by
-  env-var **name** only.
+- **Money-path config** — `~/.zeroclaw/solpay.env` (never committed): the locked
+  values `solpay` reads (wallet, cluster, mint table, RPC, limits). Copy from
+  [`agent/solpay.env.example`](../agent/solpay.env.example). The skills **source
+  this file** at run time — see [Why a file, not env vars](#why-a-file-not-env-vars).
+- **Runtime config** — `agent/config.toml` (deployed by `scripts/setup.sh`): how
+  ZeroClaw runs (LLM provider, memory ledger, gateway, WhatsApp channel, risk
+  profile, skills, SOPs). Contains **no secrets**.
+- **Secrets** — set with `zeroclaw config set <path>` (masked input, **encrypted
+  at rest** via `[secrets] encrypt = true` + the config dir's `.secret_key`):
+  the WhatsApp tokens and the LLM API key. ZeroClaw has no `*_env` reference
+  scheme; this encrypted store is its native secret model.
 
-Every value below is validated at startup; `solpay` **refuses to run** on a bad
-value rather than booting half-configured.
+Every `solpay` value below is validated at startup; `solpay` **refuses to run**
+on a bad value rather than booting half-configured.
 
 ## Values read by `solpay`
 
@@ -30,9 +37,25 @@ value rather than booting half-configured.
 | `RPC_BACKOFF_BASE_MS` | backoff base (jittered) | integer | `250` |
 
 Any of these can also be passed as a CLI flag (`--recipient`, `--mint`,
-`--cluster`, `--commitment`, `--rpc`, `--rpc-fallback`, `--label`). Flags win
-over the environment — this is how ZeroClaw skills pass **locked args** the model
-cannot override.
+`--cluster`, `--commitment`, `--rpc`, `--rpc-fallback`, `--label`). The skills
+leave these flags **out** of the command template and let `solpay` read them from
+`solpay.env`, so the model can supply only `amount`, `token`, and `message` — it
+can never reach the wallet, mint, or cluster.
+
+## Why a file, not env vars
+
+ZeroClaw runs a skill's shell command with a **cleared environment** — only
+`PATH`, `HOME`, `TERM`, and a few locale vars survive (`SAFE_ENV_VARS` in
+ZeroClaw's `skill_tool.rs`). Ambient env vars like `MERCHANT_WALLET` would be
+stripped, so each money-path skill sources `~/.zeroclaw/solpay.env` (reachable
+via the surviving `$HOME`) before calling `solpay`:
+
+```toml
+command = "set -a && . \"${HOME}/.zeroclaw/solpay.env\" && solpay create-url --amount {{amount}} --token {{token}} --message {{message}}"
+```
+
+Because the file is sourced by `/bin/sh`, any value containing spaces must be
+quoted (see `solpay.env.example`).
 
 ## The master switch: devnet vs mainnet
 
@@ -64,14 +87,19 @@ verification checks the lamport delta credited to the merchant wallet.
 
 ## Secret handling
 
-- `.env` is the **only** file with secrets and is git-ignored.
-- `agent/zeroclaw.toml` references secrets by env-var name (`*_env`), never inline.
-- **No private keys exist** — the system is non-custodial.
-- An RPC URL may embed a provider API key → treat the whole URL as a secret.
-- Recommended: `chmod 600 .env`.
+- **No private keys exist** — the system is non-custodial; `solpay.env` holds only
+  a **public** receiving key and public parameters, so it is not itself a secret
+  (though `chmod 600` is still recommended).
+- The real secrets — WhatsApp `access_token`/`app_secret`/`verify_token` and the
+  LLM `api_key` — are set with `zeroclaw config set` and **encrypted at rest** in
+  the config dir (`[secrets] encrypt = true` + `.secret_key`). They never appear
+  in any committed file.
+- An RPC URL may embed a provider API key → if so, treat that URL as a secret and
+  keep it in `solpay.env` (mode 600), not in git.
 
-## Agent / SOP-layer values (wired in the agent phase)
+## Agent / SOP-layer values
 
-`INVOICE_TTL_SECONDS`, `POLL_INTERVAL_SECONDS`, `POLL_MAX_ATTEMPTS`,
-`WHATSAPP_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
-`LLM_API_KEY`. See [`.env.example`](../.env.example) for descriptions.
+- WhatsApp + LLM secrets: set via `zeroclaw config set` (see above).
+- Staff allowlist: `peer_groups.whatsapp_staff.external_peers` in `config.toml`.
+- Invoice TTL / polling cadence: expressed in the SOPs (`agent/sops/*/SOP.md`)
+  and the `verify-payments` cron trigger.

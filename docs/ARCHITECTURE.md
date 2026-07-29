@@ -33,7 +33,7 @@ config, never from the message.**
 | Layer | Where | Responsibility |
 |---|---|---|
 | Channel / adapter | ZeroClaw gateway (WhatsApp) | receive/send messages + media |
-| Authorization | ZeroClaw `allowed_users` | only staff numbers can charge |
+| Authorization | ZeroClaw channel `dm_policy=allowlist` + `peer_groups` | only staff numbers can charge |
 | Intent (NLU) | ZeroClaw + LLM | `"Charge Table 4 25 USDC"` → intent JSON |
 | Orchestration | ZeroClaw SOP (deterministic mode) | sequence steps; **no LLM on the money path** |
 | Domain | `solpay` `domain/` | invoice state machine + validation (pure) |
@@ -117,7 +117,7 @@ sequenceDiagram
 - **The LLM cannot lose your money** — money logic is deterministic and unit-tested; the LLM is confined to language.
 - **Non-custodial** — no private keys, no signing, no custody; the scariest half of the threat model does not exist.
 - **Maximally ZeroClaw** — channels, SOP, cron, memory are built-ins; almost no bespoke framework code (true Tier-1).
-- **Reproducible & auditable** — one stateless binary, pinned toolchain, committed lockfile, 107 tests, clippy-clean.
+- **Reproducible & auditable** — one stateless binary, pinned toolchain, committed lockfile, 115 tests, clippy-clean.
 
 See also: [`THREAT_MODEL.md`](THREAT_MODEL.md), [`CONFIGURATION.md`](CONFIGURATION.md),
 and the decision records under [`adr/`](adr/).

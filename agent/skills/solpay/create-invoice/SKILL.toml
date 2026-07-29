@@ -1,0 +1,12 @@
+[skill]
+name = "create-invoice"
+description = "Create a Solana Pay invoice (reference + payment URL) for an amount in an allowed token."
+version = "1.0.0"
+
+[[tools]]
+name = "create_invoice"
+description = "Create an invoice for an amount in an allowed token (USDC or SOL). Emits JSON with reference + solana: URL."
+kind = "shell"
+command = "set -a && . \"${HOME}/.zeroclaw/solpay.env\" && solpay create-url --amount {{amount}} --token {{token}} --message {{message}}"
+timeout_secs = 10
+args = { amount = "Charge amount as a decimal string, e.g. 25 or 1.5", token = "Token symbol; must be USDC or SOL", message = "Short note shown to the payer, e.g. 'Table 4'" }

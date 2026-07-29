@@ -1,0 +1,12 @@
+[skill]
+name = "send-qr"
+description = "Render a Solana Pay URL to a PNG QR code for sending over WhatsApp."
+version = "1.0.0"
+
+[[tools]]
+name = "render_qr"
+description = "Render a solana: URL to a PNG QR at the given path. Rejects non-solana URLs."
+kind = "shell"
+command = "solpay render-qr --url {{url}} --out {{out}}"
+timeout_secs = 10
+args = { url = "The solana: payment URL to encode", out = "Output PNG path, e.g. /tmp/invoice.png" }

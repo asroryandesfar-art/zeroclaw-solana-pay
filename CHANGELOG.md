@@ -6,7 +6,26 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **ZeroClaw agent layer validated against a real ZeroClaw runtime** (v0.8.3,
+  `schema_version 3`). The config, skills, and SOPs now load and pass
+  `zeroclaw skills list`, `zeroclaw sop validate`, and `zeroclaw doctor`; the
+  `[verify]` caveats are removed. `scripts/setup.sh` deploys the layer into a
+  config dir and self-validates. See [ADR 0005](docs/adr/0005-validated-against-zeroclaw.md).
+- `agent/solpay.env.example` — the locked money-path config the skills source.
+
+### Changed
+- Rewrote the agent layer to the real ZeroClaw schema: `agent/zeroclaw.toml` →
+  `agent/config.toml`; skills to `[skill]` + `[[tools]]` (`SKILL.toml`); SOPs to
+  per-directory `SOP.toml` + `SOP.md`. WhatsApp/LLM secrets now use ZeroClaw's
+  encrypted-at-rest store (`zeroclaw config set`), not `*_env` references.
+
 ### Fixed
+- **Skill environment.** ZeroClaw clears a skill's environment before running its
+  shell command (only `PATH`/`HOME`/locale survive), so `solpay` could not read
+  its locked config from ambient env vars. Skills now source
+  `~/.zeroclaw/solpay.env` (via the surviving `$HOME`); proven end-to-end under a
+  simulated `env_clear`.
 - Payment `reference` is now always **on-curve**. It was random 32 bytes (often
   off-curve); strict wallets like **Solflare** reject an off-curve reference as an
   "invalid address" (Phantom is lenient). Now compatible with Phantom and Solflare.
@@ -42,10 +61,10 @@ All notable changes to this project are documented here. The format is based on
   bounded retries with jitter), and a pure payment verifier (five checks).
 - Configuration with fail-fast validation, a devnet/mainnet master switch, and a
   mainnet safety interlock.
-- 107 tests: unit, CLI integration (black-box), real-devnet parser fixtures, and
+- 115 tests: unit, CLI integration (black-box), real-devnet parser fixtures, and
   parse→decide fixtures. CI runs fmt + clippy (`-D warnings`) + tests.
 - Documentation: README, architecture, threat model, configuration, setup,
-  operations, and ADRs 0001–0004.
+  operations, and ADRs 0001–0005.
 
 ### Notes
 - Non-custodial by design: no private keys, no signing, no fund custody.

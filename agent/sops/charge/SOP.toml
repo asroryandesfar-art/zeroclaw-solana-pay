@@ -1,0 +1,10 @@
+[sop]
+name = "charge"
+description = "Staff sends 'Charge Table 4 25 USDC' on WhatsApp; create an invoice + QR and reply. No LLM in the money path."
+version = "1.0.0"
+deterministic = true
+agent = "solpay"
+
+[[triggers]]
+type = "channel"
+channel = "whatsapp"

@@ -50,7 +50,7 @@ diagram at 0:20 and text callouts at the key moments.
 | 0:20–0:40 | two-plane diagram | "Built on ZeroClaw and Solana Pay. The LLM only reads language — every payment decision is deterministic code. No private keys, ever." |
 | 0:40–1:40 | phone + terminal + explorer | "Live: I message the agent…" → QR appears → "I scan and pay 25 USDC on devnet…" → explorer shows `confirmed` → "…the agent detects it and confirms." Callout: **Invoice #124 Paid ✅** |
 | 1:40–2:20 | terminal + callouts | "Why safe? The agent holds only a *receiving public key*. A fake 'USDC'? Rejected — it checks the exact mint. Underpayment? Rejected. Replays? Impossible — one reference, one invoice." |
-| 2:20–2:50 | `make check` + CI badge | "Clone, set six variables, run. 107 tests, deterministic and offline. CI green. Every decision documented in ADRs." |
+| 2:20–2:50 | `make check` + CI badge | "Clone, set six variables, run. 115 tests, deterministic and offline. CI green. Every decision documented in ADRs." |
 | 2:50–3:00 | repo URL | "An AI agent that can take money — but can never touch it. Repo and docs below." |
 
 ## A CLI-only fallback demo (if WhatsApp/agent is flaky on the day)

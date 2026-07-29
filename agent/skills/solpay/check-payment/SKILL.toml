@@ -1,0 +1,12 @@
+[skill]
+name = "check-payment"
+description = "Verify on-chain whether an invoice was paid (paid / pending / mismatch)."
+version = "1.0.0"
+
+[[tools]]
+name = "check_payment"
+description = "Verify a payment. recipient/mint/cluster/rpc/commitment are locked from the environment; the model supplies only reference, amount, and token."
+kind = "shell"
+command = "set -a && . \"${HOME}/.zeroclaw/solpay.env\" && solpay verify --reference {{reference}} --amount-base-units {{amount_base_units}} --token {{token}}"
+timeout_secs = 20
+args = { reference = "The invoice reference (base58) from create_invoice", amount_base_units = "Expected amount in base units (integer)", token = "Token symbol of the invoice; USDC or SOL" }

@@ -1,8 +1,8 @@
 # Setup
 
-`clone → configure → run`, verifiable in minutes. This document covers the
-`solpay` helper end-to-end on devnet. The full WhatsApp + ZeroClaw agent wiring
-is added in the agent phase.
+`clone → configure → run`, verifiable in minutes. Sections 1–4 cover the
+`solpay` helper end-to-end on devnet; section 5 deploys the WhatsApp + ZeroClaw
+agent layer (validated against ZeroClaw v0.8.3).
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ key — your receiving wallet). Keep `SOLANA_CLUSTER=devnet` and
 ## 2. Verify the build
 
 ```bash
-make test        # 107 tests, offline and deterministic
+make test        # 115 tests, offline and deterministic
 make lint        # clippy -D warnings
 make install     # installs `solpay` to ~/.cargo/bin
 ```
@@ -61,6 +61,41 @@ transfer confirms, `verify` returns `{"status":"paid","signature":...}`.
 ## 4. Human-readable mode
 
 Add `--format human` to any command for friendly text instead of JSON.
+
+## 5. Deploy the ZeroClaw agent (WhatsApp terminal)
+
+Install [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw) (v0.8.3+), then:
+
+```bash
+scripts/setup.sh          # builds solpay, deploys agent/ into ~/.zeroclaw, self-validates
+```
+
+`setup.sh` copies `agent/config.toml`, the `solpay` skill bundle, and the SOPs
+into the config dir; sets an absolute `sop.sops_dir`; and runs
+`zeroclaw skills list`, `zeroclaw sop validate`, and `zeroclaw doctor`. Then, one
+time as the operator:
+
+```bash
+# 1. Locked money-path config (public values; no secrets):
+$EDITOR ~/.zeroclaw/solpay.env           # set MERCHANT_WALLET; keep ALLOW_MAINNET=false
+
+# 2. Staff allowlist (deny-by-default):
+zeroclaw config set peer_groups.whatsapp_staff.external_peers --config-dir ~/.zeroclaw
+
+# 3. WhatsApp + LLM secrets (masked input, encrypted at rest):
+zeroclaw config set channels.whatsapp.default.access_token    --config-dir ~/.zeroclaw
+zeroclaw config set channels.whatsapp.default.app_secret      --config-dir ~/.zeroclaw
+zeroclaw config set channels.whatsapp.default.verify_token    --config-dir ~/.zeroclaw
+zeroclaw config set channels.whatsapp.default.phone_number_id --config-dir ~/.zeroclaw
+zeroclaw config set providers.models.openai.nlu.api_key       --config-dir ~/.zeroclaw
+
+# 4. Run it:
+zeroclaw agent -a solpay --config-dir ~/.zeroclaw
+```
+
+The two SOPs (`charge`, `verify-payments`) then drive the terminal: a staff
+message like `Charge Table 4 25 USDC` creates an invoice + QR; a per-minute cron
+re-checks pending invoices on-chain. Neither path calls the LLM for money logic.
 
 ## Troubleshooting
 

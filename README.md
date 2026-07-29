@@ -58,7 +58,7 @@ The LLM only reads language. Every decision about money is deterministic code.
 - **USDC or native SOL** — invoice and verify in USDC (SPL) or SOL (`--token SOL`); both verified against real devnet payments.
 - **Correct by construction** — integer-only money math, exact-mint check (anti fake-USDC), exact-amount check, reference-based replay resistance, `confirmed`/`finalized` gating.
 - **Resilient** — RPC failover + bounded retries with jitter; an unreachable node keeps an invoice *pending*, never falsely *paid* or *failed*.
-- **Reproducible** — pinned toolchain, committed lockfile, one `make` surface, 114 tests.
+- **Reproducible** — pinned toolchain, committed lockfile, one `make` surface, 115 tests.
 
 ---
 
@@ -67,7 +67,7 @@ The LLM only reads language. Every decision about money is deterministic code.
 ```bash
 git clone <repo> && cd zeroclaw-solana-pay
 cp .env.example .env          # a demo MERCHANT_WALLET is pre-filled; replace it with your own for real use
-make test                     # 107 tests, offline & deterministic
+make test                     # 115 tests, offline & deterministic
 make install                  # puts `solpay` on your PATH
 
 # Load your config into the shell (MERCHANT_WALLET, SOLANA_CLUSTER, RPC…)
@@ -223,9 +223,18 @@ crates/solpay/     the deterministic, non-custodial Rust helper (money lives her
   src/solana/            pubkey · ATA · reference · pay_url · rpc · verify
   src/{config,error,output,qr,cli}.rs   CLI surface
   tests/                 CLI + real-devnet fixtures + parse→decide
-agent/             ZeroClaw config, skills, SOPs, prompts (agent phase)
+agent/             ZeroClaw agent layer (validated against ZeroClaw v0.8.3)
+  config.toml            schema_version 3 config (provider, channel, risk, memory)
+  skills/solpay/         create-invoice · send-qr · check-payment (SKILL.toml)
+  sops/                  charge · verify-payments (SOP.toml + SOP.md)
+  solpay.env.example     locked money-path config (→ ~/.zeroclaw/solpay.env)
 docs/              architecture, threat model, configuration, setup, ADRs
 ```
+
+The `agent/` layer is not inferred from docs — it loads and validates on a real
+ZeroClaw runtime (`zeroclaw skills list`, `zeroclaw sop validate`,
+`zeroclaw doctor`); `scripts/setup.sh` deploys and re-checks it. See
+[ADR 0005](docs/adr/0005-validated-against-zeroclaw.md).
 
 ## Development
 

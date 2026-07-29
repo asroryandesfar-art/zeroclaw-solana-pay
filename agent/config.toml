@@ -1,0 +1,85 @@
+# ZeroClaw configuration for the Solana Payment Assistant.
+#
+# Validated against ZeroClaw v0.8.3 (schema_version 3) with:
+#   zeroclaw config list --config-dir <dir>
+#   zeroclaw doctor      --config-dir <dir>
+#   zeroclaw skills list --config-dir <dir>
+#   zeroclaw sop validate --config-dir <dir>
+#
+# Deploy with scripts/setup.sh, which copies this tree into a ZeroClaw config
+# dir and sets an absolute sop.sops_dir. Secrets are NEVER stored here: set them
+# with `zeroclaw config set <path>` (masked input, encrypted at rest via
+# [secrets] encrypt = true + the config dir's .secret_key).
+schema_version = 3
+locale = "en"
+
+# --- LLM provider: used ONLY for the single intent-extraction step -----------
+# Set the key out of band (encrypted at rest), never in this file:
+#   zeroclaw config set providers.models.openai.nlu.api_key
+[providers.models.openai.nlu]
+name = "openai"
+model = "gpt-4o-mini"          # small, structured-output capable
+temperature = 0.0              # intent parsing must be deterministic
+max_tokens = 512
+uri = "https://api.openai.com/v1/chat/completions"
+wire_api = "chat_completions"
+
+# --- The payment agent -------------------------------------------------------
+[agents.solpay]
+model_provider = "openai.nlu"
+risk_profile = "solpay"
+runtime_profile = "default"
+skill_bundles = ["solpay"]
+channels = ["whatsapp.default"]
+
+# --- WhatsApp channel --------------------------------------------------------
+# Business (Cloud API) mode. Secrets via `zeroclaw config set`:
+#   channels.whatsapp.default.access_token / .app_secret / .verify_token
+[channels.whatsapp.default]
+enabled = true
+mode = "business"
+phone_number_id = "REPLACE_WITH_PHONE_NUMBER_ID"
+dm_policy = "allowlist"        # deny-by-default: only allowlisted peers
+group_policy = "allowlist"
+
+# PRIMARY AUTHORIZATION GATE — deny-by-default. Only these staff numbers may
+# reach the agent. An empty list denies everyone (safe default).
+[peer_groups.whatsapp_staff]
+agents = ["solpay"]
+channel = "whatsapp"
+external_peers = []            # e.g. ["+6281234567890"]
+
+# --- Risk profile: the money path runs a single locked binary ----------------
+# Supervised, high-risk commands blocked. allowed_commands is scoped to what the
+# skills actually run: `solpay`, plus the `set`/`.` builtins used to source the
+# operator-owned locked config file.
+[risk_profiles.solpay]
+level = "supervised"
+allowed_commands = ["solpay", "set", "."]
+block_high_risk_commands = true
+workspace_only = false         # skills source ~/.zeroclaw/solpay.env (see docs)
+
+# --- Skills bundle: resolves to <config-dir>/skills/solpay -------------------
+[skill_bundles.solpay]
+directory = "skills/solpay"
+
+# --- SOPs: setup.sh sets this to an absolute <config-dir>/sops ---------------
+[sop]
+sops_dir = "REPLACE_WITH_ABSOLUTE_SOPS_DIR"
+
+# --- Memory: the invoice ledger. Exact-match only; embeddings OFF ------------
+[memory]
+backend = "sqlite"
+embedding_provider = "none"
+search_mode = "bm25"           # keyword ledger, not semantic recall
+
+# --- Secrets encrypted at rest (config dir .secret_key) ----------------------
+[secrets]
+encrypt = true
+
+# --- Gateway: local control plane + WhatsApp webhook. Expose via a tunnel ----
+[gateway]
+host = "127.0.0.1"
+port = 42617
+require_pairing = true
+allow_public_bind = false
