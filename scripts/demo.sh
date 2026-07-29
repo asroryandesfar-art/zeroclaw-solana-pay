@@ -30,7 +30,8 @@ echo "$INVOICE_JSON"
 
 REFERENCE="$(printf '%s' "$INVOICE_JSON" | grep -o '"reference":"[^"]*"' | cut -d'"' -f4)"
 URL="$(printf '%s' "$INVOICE_JSON" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)"
-MINT="$(printf '%s' "$INVOICE_JSON" | grep -o '"mint":"[^"]*"' | cut -d'"' -f4)"
+# `mint` is null for native SOL — `|| true` keeps `set -e`/pipefail from aborting.
+MINT="$(printf '%s' "$INVOICE_JSON" | grep -o '"mint":"[^"]*"' | cut -d'"' -f4 || true)"
 AMOUNT_BASE="$(printf '%s' "$INVOICE_JSON" | grep -o '"amount_base_units":[0-9]*' | cut -d: -f2)"
 
 # Save the invoice so `scripts/verify.sh` can check it with no arguments.
@@ -48,8 +49,8 @@ echo "  |  A Solana Pay QR has no cluster field; the wallet picks the network.  
 echo "  |  Phantom defaults to MAINNET, so switch it first:                     |"
 echo "  |    Phantom -> Settings -> Developer Settings -> Testnet Mode = ON     |"
 echo "  |    then select 'Solana Devnet'.                                       |"
-echo "  |  The token in this QR exists ONLY on devnet, so a real mainnet USDC   |"
-echo "  |  payment is impossible from this QR.                                  |"
+echo "  |  This is a DEVNET invoice. Keep your wallet on Devnet — a wallet on   |"
+echo "  |  Mainnet would attempt a REAL payment.                                |"
 echo "  +----------------------------------------------------------------------+"
 echo "  QR image:      /tmp/solpay-demo.png"
 echo "  Pay with:      $TOKEN   (${MINT:-native SOL}, devnet-only)"
