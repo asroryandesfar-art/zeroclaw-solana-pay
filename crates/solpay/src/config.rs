@@ -378,9 +378,10 @@ pub fn commitment_from(flag: Option<&str>) -> Result<CommitmentLevel, ConfigErro
     resolve_commitment(&value)
 }
 
-/// Allowlist from `TOKEN_ALLOWLIST` (default `USDC`).
+/// Allowlist from `TOKEN_ALLOWLIST` (default `USDC,SOL` — both supported assets,
+/// so `--token SOL` works out of the box even without a `.env`).
 pub fn allowlist_from_env() -> Vec<String> {
-    parse_allowlist(&env_or("TOKEN_ALLOWLIST", "USDC"))
+    parse_allowlist(&env_or("TOKEN_ALLOWLIST", "USDC,SOL"))
 }
 
 /// Mint from `--mint` override, else per-cluster table for `token`.
