@@ -40,7 +40,9 @@ pub fn generate() -> Result<Pubkey, ReferenceError> {
             return Ok(pk);
         }
     }
-    Err(ReferenceError("could not generate an on-curve reference".to_string()))
+    Err(ReferenceError(
+        "could not generate an on-curve reference".to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -71,7 +73,10 @@ mod tests {
     fn references_are_always_on_curve() {
         // Wallets like Solflare reject off-curve references as invalid addresses.
         for _ in 0..2_000 {
-            assert!(generate().unwrap().is_on_curve(), "generated an off-curve reference");
+            assert!(
+                generate().unwrap().is_on_curve(),
+                "generated an off-curve reference"
+            );
         }
     }
 }
