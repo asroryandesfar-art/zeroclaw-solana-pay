@@ -35,7 +35,9 @@ AMT="${AMT:-25000000}"
 TOK="${TOK:-USDC}"
 : "${SOLANA_RPC_PRIMARY:=https://api.devnet.solana.com}"
 
-[[ -n "${MERCHANT_WALLET:-}" ]] || die "MERCHANT_WALLET is not set — add it to .env (this script auto-loads .env)"
+# Use .env's MERCHANT_WALLET if present; otherwise fall back to the demo wallet.
+: "${MERCHANT_WALLET:=$DEMO_MERCHANT_WALLET}"
+export MERCHANT_WALLET
 
 echo "verify: token=$TOK reference=$REF amount_base_units=$AMT recipient=$MERCHANT_WALLET rpc=$SOLANA_RPC_PRIMARY"
 exec "$SOLPAY" --format human verify \

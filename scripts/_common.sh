@@ -21,6 +21,11 @@ solpay_bin() {
   echo "" # not found
 }
 
+# Demo-only fallback merchant wallet (a public devnet address). The demo scripts
+# use this ONLY when MERCHANT_WALLET is not already set in .env / the environment.
+# Production must set its own MERCHANT_WALLET; nothing is hardcoded in the binary.
+DEMO_MERCHANT_WALLET="9pKSaQGCnfdjFCoHhSAc5mPDDyaBtNeQX2mjFuGNAvmG"
+
 die()  { echo "error: $*" >&2; exit 1; }
 info() { echo "  $*"; }
 ok()   { echo "  ✓ $*"; }

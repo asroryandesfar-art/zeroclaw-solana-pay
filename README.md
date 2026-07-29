@@ -66,7 +66,7 @@ The LLM only reads language. Every decision about money is deterministic code.
 
 ```bash
 git clone <repo> && cd zeroclaw-solana-pay
-cp .env.example .env          # then edit .env and set MERCHANT_WALLET (a devnet public key)
+cp .env.example .env          # a demo MERCHANT_WALLET is pre-filled; replace it with your own for real use
 make test                     # 107 tests, offline & deterministic
 make install                  # puts `solpay` on your PATH
 

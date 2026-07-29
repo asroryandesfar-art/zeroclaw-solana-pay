@@ -14,7 +14,9 @@ SOLPAY="$(solpay_bin)"
 
 : "${SOLANA_CLUSTER:=devnet}"
 : "${SOLANA_RPC_PRIMARY:=https://api.devnet.solana.com}"
-: "${MERCHANT_WALLET:?set MERCHANT_WALLET (a devnet public key) in .env or the environment}"
+# Use .env's MERCHANT_WALLET if present; otherwise fall back to the demo wallet.
+: "${MERCHANT_WALLET:=$DEMO_MERCHANT_WALLET}"
+export MERCHANT_WALLET   # so the `solpay` QR generator picks it up
 : "${STORE_LABEL:=ZeroClaw Coffee}"
 AMOUNT="${1:-25}"
 TOKEN="${2:-USDC}"   # USDC (SPL) or SOL (native)
