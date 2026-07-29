@@ -19,6 +19,8 @@ Built for the ZeroClaw × Solana bounty on [ZeroClaw](https://github.com/zerocla
 and [Solana Pay](https://docs.solanapay.com/spec), using ZeroClaw built-ins (channels,
 SOP, cron, memory) plus one small, auditable Rust helper.
 
+📺 **[Watch the 3-minute demo](https://youtu.be/t4aPitLXOmo)** — bounty submission writeup: [`SUBMISSION.md`](SUBMISSION.md)
+
 ---
 
 ## The flow

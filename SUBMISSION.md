@@ -4,7 +4,7 @@
 **Track:** Build Solana-native plugins/capabilities for ZeroClaw
 **Repo:** https://github.com/asroryandesfar-art/zeroclaw-solana-pay
 **Release:** [v0.1.0](https://github.com/asroryandesfar-art/zeroclaw-solana-pay/releases/tag/v0.1.0)
-**Demo video:** _<paste URL>_
+**Demo video:** https://youtu.be/t4aPitLXOmo
 **License:** MIT OR Apache-2.0
 
 ---

@@ -72,3 +72,5 @@ flipping `pending → paid`. This proves the money path end-to-end on real devne
 - MP4 ≤ 3:00, 1080p, clear audio, English captions.
 - Thumbnail with the non-custodial tagline.
 - Uploaded (YouTube/Loom) and linked from the README and the submission form.
+
+**Published:** https://youtu.be/t4aPitLXOmo
