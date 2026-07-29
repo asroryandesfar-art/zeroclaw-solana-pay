@@ -120,6 +120,23 @@ scripts/verify.sh               # → PAID ✅
 > amount credited to the **merchant wallet** — use a dedicated (non-busy) wallet,
 > and USDC when you need strict per-invoice binding.
 
+### No devnet USDC? (Circle faucet blocked / unavailable)
+
+Devnet USDC comes from Circle's faucet at **https://faucet.circle.com** (select
+Solana Devnet). If it won't open, it's usually an **ISP DNS block** — switch your
+DNS to `1.1.1.1` (or use a VPN); the faucet itself is up.
+
+To test the SPL flow **without any faucet**, mint a local USDC-style test token
+(you become the mint authority) and use the `--mint` override:
+
+```bash
+scripts/mint_test_token.sh <your-phantom-payer-wallet>   # needs solana + spl-token CLI
+# → prints a TEST MINT and the exact solpay commands to use it
+```
+
+This exercises the identical SPL path (reference + ATA + exact-mint + amount) that
+real USDC uses, with a token you fully control.
+
 ---
 
 ## The `solpay` helper
