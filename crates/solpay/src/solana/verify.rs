@@ -143,21 +143,30 @@ pub fn evaluate(candidate: &Candidate, expected: &Expected) -> TxOutcome {
     if !candidate.evidence.succeeded {
         return TxOutcome::TxFailed;
     }
-    // Check 1: this must be *our* invoice's transaction.
-    if !candidate
-        .evidence
-        .contains_account(&expected.reference.to_string())
-    {
-        return TxOutcome::MissingReference;
-    }
-
-    // Checks 2, 3, 4 depend on the asset.
+    // Checks 1–4 depend on the asset.
     match &expected.asset {
         ExpectedAsset::Spl {
             mint,
             recipient_ata,
-        } => evaluate_spl(candidate, expected.amount_base_units, mint, recipient_ata),
+        } => {
+            // For SPL tokens (e.g. USDC) the wallet includes the Solana Pay
+            // reference, so require it — this binds the payment to exactly this
+            // invoice.
+            if !candidate
+                .evidence
+                .contains_account(&expected.reference.to_string())
+            {
+                return TxOutcome::MissingReference;
+            }
+            evaluate_spl(candidate, expected.amount_base_units, mint, recipient_ata)
+        }
         ExpectedAsset::Sol => {
+            // Phantom (and most wallets) do NOT attach the Solana Pay reference
+            // to *native SOL* transfers, so we cannot bind by reference. Native
+            // SOL is matched by the exact lamport amount credited to the merchant
+            // wallet; `verify_payment` gathers candidates from the recipient's
+            // signatures. Less precise than reference binding — for strict
+            // per-invoice binding use USDC (SPL), which carries the reference.
             evaluate_sol(candidate, expected.amount_base_units, &expected.recipient)
         }
     }
@@ -275,16 +284,25 @@ pub fn decide(candidates: &[Candidate], expected: &Expected) -> Verdict {
     Verdict::Pending
 }
 
-/// Orchestrate verification against the chain: find signatures for the
-/// reference, fetch each confirmed transaction, and decide. An RPC failure
-/// returns `Err` (a transient condition — the caller keeps the invoice PENDING).
+/// Orchestrate verification against the chain: find candidate signatures, fetch
+/// each confirmed transaction, and decide. An RPC failure returns `Err` (a
+/// transient condition — the caller keeps the invoice PENDING).
+///
+/// The account we query for signatures depends on the asset: SPL invoices are
+/// found by their **reference** (the wallet embeds it), while native **SOL**
+/// invoices are found by the **merchant wallet** (wallets don't embed the
+/// reference for native SOL — see `evaluate`).
 pub fn verify_payment<T: HttpTransport>(
     client: &RpcClient<T>,
     expected: &Expected,
     signature_limit: u32,
 ) -> Result<Verdict, RpcError> {
+    let query_account = match &expected.asset {
+        ExpectedAsset::Spl { .. } => &expected.reference,
+        ExpectedAsset::Sol => &expected.recipient,
+    };
     let signatures = client.get_signatures_for_address(
-        &expected.reference,
+        query_account,
         expected.required_commitment,
         signature_limit,
     )?;

@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- Native **SOL** payments now verify. Wallets (e.g. Phantom) do **not** attach the
+  Solana Pay `reference` to native SOL transfers, so SOL invoices are matched by
+  the exact lamport amount credited to the **merchant wallet** (USDC stays
+  reference-bound). Proven against a real devnet SOL payment. Note: for a busy or
+  shared merchant wallet, use a small `--signature-limit` or a dedicated wallet.
+
+## [0.2.0-dev]
+
 ### Added
 - Native **SOL** payments alongside USDC. `create-url --token SOL` builds a
   Solana Pay URL with no `spl-token` (native transfer, 9 decimals); `verify
